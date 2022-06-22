@@ -1,0 +1,3 @@
+[submodule "Apache-Kafka-Series_-_Learn-Apache-Kafka-for-Beginners-v3/resources/Seccion9/kafka-beginners-course"]
+	path = Apache-Kafka-Series_-_Learn-Apache-Kafka-for-Beginners-v3/resources/Seccion9/kafka-beginners-course
+	url = git@github.com:gtorres04/kafka-beginners-course.git
