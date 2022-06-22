@@ -1,0 +1,1091 @@
+*********************** 34. CLI Introduction ***********************
+
+*** Kafka CLI - How to invoke ***
+
+* La CLI viene con los binarios de Kafka.
+* Si configuras la variable $PATH correctamente, entonces deberas acceder a la CLI desde donde quieras en tu PC.
+* Usa la opcion --bootstrap-server donde sea. en lugar de --zookeeper. por ejemplo: 
+        - kafka-topics --bootstrap-server localhost:9092.
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh
+Create, delete, describe, or change a topic.
+Option                                   Description                            
+------                                   -----------                            
+--alter                                  Alter the number of partitions,        
+                                           replica assignment, and/or           
+                                           configuration for the topic.         
+--at-min-isr-partitions                  if set when describing topics, only    
+                                           show partitions whose isr count is   
+                                           equal to the configured minimum.     
+--bootstrap-server <String: server to    REQUIRED: The Kafka server to connect  
+  connect to>                              to.                                  
+--command-config <String: command        Property file containing configs to be 
+  config property file>                    passed to Admin Client. This is used 
+                                           only with --bootstrap-server option  
+                                           for describing and altering broker   
+                                           configs.                             
+--config <String: name=value>            A topic configuration override for the 
+                                           topic being created or altered. The  
+                                           following is a list of valid         
+                                           configurations:                      
+                                                cleanup.policy                        
+                                                compression.type                      
+                                                delete.retention.ms                   
+                                                file.delete.delay.ms                  
+                                                flush.messages                        
+                                                flush.ms                              
+                                                follower.replication.throttled.       
+                                           replicas                             
+                                                index.interval.bytes                  
+                                                leader.replication.throttled.replicas 
+                                                local.retention.bytes                 
+                                                local.retention.ms                    
+                                                max.compaction.lag.ms                 
+                                                max.message.bytes                     
+                                                message.downconversion.enable         
+                                                message.format.version                
+                                                message.timestamp.difference.max.ms   
+                                                message.timestamp.type                
+                                                min.cleanable.dirty.ratio             
+                                                min.compaction.lag.ms                 
+                                                min.insync.replicas                   
+                                                preallocate                           
+                                                remote.storage.enable                 
+                                                retention.bytes                       
+                                                retention.ms                          
+                                                segment.bytes                         
+                                                segment.index.bytes                   
+                                                segment.jitter.ms                     
+                                                segment.ms                            
+                                                unclean.leader.election.enable        
+                                         See the Kafka documentation for full   
+                                           details on the topic configs. It is  
+                                           supported only in combination with --
+                                           create if --bootstrap-server option  
+                                           is used (the kafka-configs CLI       
+                                           supports altering topic configs with 
+                                           a --bootstrap-server option).        
+--create                                 Create a new topic.                    
+--delete                                 Delete a topic                         
+--delete-config <String: name>           A topic configuration override to be   
+                                           removed for an existing topic (see   
+                                           the list of configurations under the 
+                                           --config option). Not supported with 
+                                           the --bootstrap-server option.       
+--describe                               List details for the given topics.     
+--disable-rack-aware                     Disable rack aware replica assignment  
+--exclude-internal                       exclude internal topics when running   
+                                           list or describe command. The        
+                                           internal topics will be listed by    
+                                           default                              
+--help                                   Print usage information.               
+--if-exists                              if set when altering or deleting or    
+                                           describing topics, the action will   
+                                           only execute if the topic exists.    
+--if-not-exists                          if set when creating topics, the       
+                                           action will only execute if the      
+                                           topic does not already exist.        
+--list                                   List all available topics.             
+--partitions <Integer: # of partitions>  The number of partitions for the topic 
+                                           being created or altered (WARNING:   
+                                           If partitions are increased for a    
+                                           topic that has a key, the partition  
+                                           logic or ordering of the messages    
+                                           will be affected). If not supplied   
+                                           for create, defaults to the cluster  
+                                           default.                             
+--replica-assignment <String:            A list of manual partition-to-broker   
+  broker_id_for_part1_replica1 :           assignments for the topic being      
+  broker_id_for_part1_replica2 ,           created or altered.                  
+  broker_id_for_part2_replica1 :                                                
+  broker_id_for_part2_replica2 , ...>                                           
+--replication-factor <Integer:           The replication factor for each        
+  replication factor>                      partition in the topic being         
+                                           created. If not supplied, defaults   
+                                           to the cluster default.              
+--topic <String: topic>                  The topic to create, alter, describe   
+                                           or delete. It also accepts a regular 
+                                           expression, except for --create      
+                                           option. Put topic name in double     
+                                           quotes and use the '\' prefix to     
+                                           escape regular expression symbols; e.
+                                           g. "test\.topic".                    
+--topic-id <String: topic-id>            The topic-id to describe.This is used  
+                                           only with --bootstrap-server option  
+                                           for describing topics.               
+--topics-with-overrides                  if set when describing topics, only    
+                                           show topics that have overridden     
+                                           configs                              
+--unavailable-partitions                 if set when describing topics, only    
+                                           show partitions whose leader is not  
+                                           available                            
+--under-min-isr-partitions               if set when describing topics, only    
+                                           show partitions whose isr count is   
+                                           less than the configured minimum.    
+--under-replicated-partitions            if set when describing topics, only    
+                                           show under replicated partitions     
+--version                                Display Kafka version.
+
+*********************** 35. Kafka topics CLI ***********************
+
+*** Kafka CLI: Kafka-topics.sh ***
+
+INTRODUCTION
+
+Realizar la gestion de topicos mediante CLI
+- Crear topicas de kafka
+- listar los topicos de kafka
+- describir los topicos de kafka
+- Aumentar la cantidad de particiones en un topico de kafka.
+- Borrar un topico de kafka.
+
+* LISTAR LOS TOPICOS DE KAFKA
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+* CREAR TOPICO
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --create
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic first_topic.
+
+Nota: el anterior warning nos dice que al intentar usar un nombre de topico como first.topic, este no te lo permitira crear, ya que seria un mismo nombre para kafka.
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --create
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic first_topic.
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic first.topic --create
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic first.topic.
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --list
+first.topic
+first_topic
+
+* CREAR PARTICIONES A UN TOPICO
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --create --partitions 3
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Error while executing topic command : Topic 'first_topic' already exists.
+[2022-04-11 17:22:55,202] ERROR org.apache.kafka.common.errors.TopicExistsException: Topic 'first_topic' already exists.
+ (kafka.admin.TopicCommand$)
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic second_topic --create --partitions 3
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic second_topic.
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --list
+first.topic
+first_topic
+second_topic
+
+* ESPECIFICAR UN FACTOR DE REPLICACION
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic third_topic --create --partitions 3 --replication-factor 2
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Error while executing topic command : Unable to replicate the partition 2 time(s): The target replication factor of 2 cannot be reached because only 1 broker(s) are registered.
+[2022-04-11 17:27:04,673] ERROR org.apache.kafka.common.errors.InvalidReplicationFactorException: Unable to replicate the partition 2 time(s): The target replication factor of 2 cannot be reached because only 1 broker(s) are registered.
+ (kafka.admin.TopicCommand$)
+
+ NOTA: En este caso recibimos un error que es que el factor de replicacion 2 es mayor que la cantidad de brokers disponibles que es 1, ya que no podemos tener mas replicacion que brokers en nuestro cluster
+
+ gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic third_topic --create --partitions 3 --replication-factor 1
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic third_topic.
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --list
+first.topic
+first_topic
+second_topic
+third_topic
+
+* DESCRIBIR UN TOPICO
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --describe
+Topic: first_topic      TopicId: NdlyJW2bSw2LeeHAYmOFEA PartitionCount: 1       ReplicationFactor: 1    Configs: segment.bytes=1073741824
+        Topic: first_topic      Partition: 0    Leader: 1       Replicas: 1     Isr: 1
+
+Asi que tenemos:
+
++ TopicId: identificador unico del topico
++ Topic: Nombre unico del topico
++ PartitionCount: cantidad de particiones.
++ ReplicationFactor: factor de replicacion de las particiones.
+
+Ejemplo del topico 2 y 3gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --delete
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic second_topic --delete
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic third_topic --delete
+
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic second_topic --describe
+Topic: second_topic     TopicId: JetyqEOYSRqqpMBKMuWa4Q PartitionCount: 3       ReplicationFactor: 1    Configs: segment.bytes=1073741824
+        Topic: second_topic     Partition: 0    Leader: 1       Replicas: 1     Isr: 1
+        Topic: second_topic     Partition: 1    Leader: 1       Replicas: 1     Isr: 1
+        Topic: second_topic     Partition: 2    Leader: 1       Replicas: 1     Isr: 1
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic thrid_topic --describe
+Error while executing topic command : Topic 'thrid_topic' does not exist as expected
+[2022-04-11 17:42:35,713] ERROR java.lang.IllegalArgumentException: Topic 'thrid_topic' does not exist as expected
+        at kafka.admin.TopicCommand$.kafka$admin$TopicCommand$$ensureTopicExists(TopicCommand.scala:401)
+        at kafka.admin.TopicCommand$TopicService.describeTopic(TopicCommand.scala:313)
+        at kafka.admin.TopicCommand$.main(TopicCommand.scala:61)
+        at kafka.admin.TopicCommand.main(TopicCommand.scala)
+ (kafka.admin.TopicCommand$)
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic third_topic --describe
+Topic: third_topic      TopicId: gJEYvcIBSWOe2FBN__hRMw PartitionCount: 3       ReplicationFactor: 1    Configs: segment.bytes=1073741824
+        Topic: third_topic      Partition: 0    Leader: 1       Replicas: 1     Isr: 1
+        Topic: third_topic      Partition: 1    Leader: 1       Replicas: 1     Isr: 1
+        Topic: third_topic      Partition: 2    Leader: 1       Replicas: 1     Isr: 1
+
+Describir todos los topicos en su grupo
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --describe
+Topic: second_topic     TopicId: JetyqEOYSRqqpMBKMuWa4Q PartitionCount: 3       ReplicationFactor: 1    Configs: segment.bytes=1073741824
+        Topic: second_topic     Partition: 0    Leader: 1       Replicas: 1     Isr: 1
+        Topic: second_topic     Partition: 1    Leader: 1       Replicas: 1     Isr: 1
+        Topic: second_topic     Partition: 2    Leader: 1       Replicas: 1     Isr: 1
+Topic: first_topic      TopicId: NdlyJW2bSw2LeeHAYmOFEA PartitionCount: 1       ReplicationFactor: 1    Configs: segment.bytes=1073741824
+        Topic: first_topic      Partition: 0    Leader: 1       Replicas: 1     Isr: 1
+Topic: first.topic      TopicId: _wjtEWBxSZqPg2Z9IwNTkw PartitionCount: 1       ReplicationFactor: 1    Configs: segment.bytes=1073741824
+        Topic: first.topic      Partition: 0    Leader: 1       Replicas: 1     Isr: 1
+Topic: third_topic      TopicId: gJEYvcIBSWOe2FBN__hRMw PartitionCount: 3       ReplicationFactor: 1    Configs: segment.bytes=1073741824
+        Topic: third_topic      Partition: 0    Leader: 1       Replicas: 1     Isr: 1
+        Topic: third_topic      Partition: 1    Leader: 1       Replicas: 1     Isr: 1
+        Topic: third_topic      Partition: 2    Leader: 1       Replicas: 1     Isr: 1
+
+* ELIMINAR TOPICO
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --delete
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic second_topic --delete
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic third_topic --delete
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --list
+first.topic
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic third.topic --delete
+Error while executing topic command : Topic 'third.topic' does not exist as expected
+[2022-04-11 17:51:24,880] ERROR java.lang.IllegalArgumentException: Topic 'third.topic' does not exist as expected
+        at kafka.admin.TopicCommand$.kafka$admin$TopicCommand$$ensureTopicExists(TopicCommand.scala:401)
+        at kafka.admin.TopicCommand$TopicService.deleteTopic(TopicCommand.scala:361)
+        at kafka.admin.TopicCommand$.main(TopicCommand.scala:63)
+        at kafka.admin.TopicCommand.main(TopicCommand.scala)
+ (kafka.admin.TopicCommand$)
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic first.topic --delete
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$
+
+*********************** 36. Kafka Console Producer CLI ***********************
+
+INTRODUCCION
+
+Kafka CLI: kafka-console-producer.sh
+
+- Producir sin claves, lo que la clave sera nula y los datos se distribuiran en todas las particiones.
+- Producir con claves, para que la misma clave vaya siempre a la misma particion.
+
+* COMANDO kafka-console-producer.sh
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-producer.sh
+Missing required option(s) [bootstrap-server]
+Option                                   Description                            
+------                                   -----------                            
+--batch-size <Integer: size>             Number of messages to send in a single 
+                                           batch if they are not being sent     
+                                           synchronously. (default: 200)        
+--bootstrap-server <String: server to    REQUIRED unless --broker-list          
+  connect to>                              (deprecated) is specified. The server
+                                           (s) to connect to. The broker list   
+                                           string in the form HOST1:PORT1,HOST2:
+                                           PORT2.                               
+--broker-list <String: broker-list>      DEPRECATED, use --bootstrap-server     
+                                           instead; ignored if --bootstrap-     
+                                           server is specified.  The broker     
+                                           list string in the form HOST1:PORT1, 
+                                           HOST2:PORT2.                         
+--compression-codec [String:             The compression codec: either 'none',  
+  compression-codec]                       'gzip', 'snappy', 'lz4', or 'zstd'.  
+                                           If specified without value, then it  
+                                           defaults to 'gzip'                   
+--help                                   Print usage information.               
+--line-reader <String: reader_class>     The class name of the class to use for 
+                                           reading lines from standard in. By   
+                                           default each line is read as a       
+                                           separate message. (default: kafka.   
+                                           tools.                               
+                                           ConsoleProducer$LineMessageReader)   
+--max-block-ms <Long: max block on       The max time that the producer will    
+  send>                                    block for during a send request      
+                                           (default: 60000)                     
+--max-memory-bytes <Long: total memory   The total memory used by the producer  
+  in bytes>                                to buffer records waiting to be sent 
+                                           to the server. (default: 33554432)   
+--max-partition-memory-bytes <Long:      The buffer size allocated for a        
+  memory in bytes per partition>           partition. When records are received 
+                                           which are smaller than this size the 
+                                           producer will attempt to             
+                                           optimistically group them together   
+                                           until this size is reached.          
+                                           (default: 16384)                     
+--message-send-max-retries <Integer>     Brokers can fail receiving the message 
+                                           for multiple reasons, and being      
+                                           unavailable transiently is just one  
+                                           of them. This property specifies the 
+                                           number of retries before the         
+                                           producer give up and drop this       
+                                           message. (default: 3)                
+--metadata-expiry-ms <Long: metadata     The period of time in milliseconds     
+  expiration interval>                     after which we force a refresh of    
+                                           metadata even if we haven't seen any 
+                                           leadership changes. (default: 300000)
+--producer-property <String:             A mechanism to pass user-defined       
+  producer_prop>                           properties in the form key=value to  
+                                           the producer.                        
+--producer.config <String: config file>  Producer config properties file. Note  
+                                           that [producer-property] takes       
+                                           precedence over this config.         
+--property <String: prop>                A mechanism to pass user-defined       
+                                           properties in the form key=value to  
+                                           the message reader. This allows      
+                                           custom configuration for a user-     
+                                           defined message reader. Default      
+                                           properties include:                  
+                                                parse.key=true|false                  
+                                                key.separator=<key.separator>         
+                                                ignore.error=true|false               
+--request-required-acks <String:         The required acks of the producer      
+  request required acks>                   requests (default: 1)                
+--request-timeout-ms <Integer: request   The ack timeout of the producer        
+  timeout ms>                              requests. Value must be non-negative 
+                                           and non-zero (default: 1500)         
+--retry-backoff-ms <Integer>             Before each retry, the producer        
+                                           refreshes the metadata of relevant   
+                                           topics. Since leader election takes  
+                                           a bit of time, this property         
+                                           specifies the amount of time that    
+                                           the producer waits before refreshing 
+                                           the metadata. (default: 100)         
+--socket-buffer-size <Integer: size>     The size of the tcp RECV size.         
+                                           (default: 102400)                    
+--sync                                   If set message send requests to the    
+                                           brokers are synchronously, one at a  
+                                           time as they arrive.                 
+--timeout <Integer: timeout_ms>          If set and the producer is running in  
+                                           asynchronous mode, this gives the    
+                                           maximum amount of time a message     
+                                           will queue awaiting sufficient batch 
+                                           size. The value is given in ms.      
+                                           (default: 1000)                      
+--topic <String: topic>                  REQUIRED: The topic id to produce      
+                                           messages to.                         
+--version                                Display Kafka version. 
+
+* CREAR UN PRODUCTOR Y ENVIAR MENSAJES
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic first_topic --partitions 3  --create
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic first_topic.
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --describe
+Topic: first_topic      TopicId: PCTtNx6fSY6kWHDQQFUPxw PartitionCount: 3       ReplicationFactor: 1    Configs: segment.bytes=1073741824
+        Topic: first_topic      Partition: 0    Leader: 1       Replicas: 1     Isr: 1
+        Topic: first_topic      Partition: 1    Leader: 1       Replicas: 1     Isr: 1
+        Topic: first_topic      Partition: 2    Leader: 1       Replicas: 1     Isr: 1
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-producer --bootstrap-server localhost:9092 --topic first_topic 
+kafka-console-producer: no se encontró la orden
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic 
+>Hola Mundo
+>Mi nombre es Gerlin
+>Mi apellido es Torres
+>Tengo 34 años
+>^C
+
+* CREAR UN PRODUCTOR CON RECONOCIMIENTO all
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic --producer-property acks=all
+>algun mensaje atascado
+>solo por diversion
+>estamos aprendiendo
+>^C
+
+* CREAR UN PRODUCTOR A UN TOPIC QUE NO EXISTE
+
+Cuando se intenta crear un productor para un topico que no existe, kafka crea el topico.
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-producer.sh --bootstrap-server localhost:9092 --topic new_topic
+>Hola Mundo
+[2022-04-11 20:04:16,930] WARN [Producer clientId=console-producer] Error while fetching metadata with correlation id 3 : {new_topic=UNKNOWN_TOPIC_OR_PARTITION} (org.apache.kafka.clients.NetworkClient)
+>otro mensaje
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ 0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic new_topic --describe
+kafka-ka-topics.sh: no se encontró la orden
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-topics.sh --bootstrap-server localhost:9092 --topic new_topic --describe
+Topic: new_topic        TopicId: Y2F4cCQ6QT-pWIE2tG9vdw PartitionCount: 1       ReplicationFactor: 1    Configs: segment.bytes=1073741824
+        Topic: new_topic        Partition: 0    Leader: 1       Replicas: 1     Isr: 1
+
+* PRODUCIR MENSAJES CON CLAVES
+
+Al espeficificar mensajes con claves, es necesario cumplir con la clave, ya que no dara una exception
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic --property parse.key=true --property key.separator=:
+>ejemplo key:ejemplo valor         
+>user_id_1234:Gerlin
+>hola mundo
+org.apache.kafka.common.KafkaException: No key found on line 3: hola mundo
+        at kafka.tools.ConsoleProducer$LineMessageReader.readMessage(ConsoleProducer.scala:292)
+        at kafka.tools.ConsoleProducer$.main(ConsoleProducer.scala:51)
+        at kafka.tools.ConsoleProducer.main(ConsoleProducer.scala)
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$
+
+*********************** 37. Kafka Console Consumer CLI ***********************
+
+INTRODUCCION
+
+Aprenderemos a usar la CLI del consumidor de la consola Kafka.
+1. Consumiremos desde la cola del topico, es decir, solo mensajes nuevos.
+2. Consumiremos desde el principio del topico.
+3. Mostrar la clave:valor en la salida de nuestro consumidor.
+
+* EXPLORAMOS EL COMANDO kafka-console-consumer.sh
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-consumer.sh
+This tool helps to read data from Kafka topics and outputs it to standard output.
+Option                                   Description                            
+------                                   -----------                            
+--bootstrap-server <String: server to    REQUIRED: The server(s) to connect to. 
+  connect to>                                                                   
+--consumer-property <String:             A mechanism to pass user-defined       
+  consumer_prop>                           properties in the form key=value to  
+                                           the consumer.                        
+--consumer.config <String: config file>  Consumer config properties file. Note  
+                                           that [consumer-property] takes       
+                                           precedence over this config.         
+--enable-systest-events                  Log lifecycle events of the consumer   
+                                           in addition to logging consumed      
+                                           messages. (This is specific for      
+                                           system tests.)                       
+--formatter <String: class>              The name of a class to use for         
+                                           formatting kafka messages for        
+                                           display. (default: kafka.tools.      
+                                           DefaultMessageFormatter)             
+--from-beginning                         If the consumer does not already have  
+                                           an established offset to consume     
+                                           from, start with the earliest        
+                                           message present in the log rather    
+                                           than the latest message.             
+--group <String: consumer group id>      The consumer group id of the consumer. 
+--help                                   Print usage information.               
+--include <String: Java regex (String)>  Regular expression specifying list of  
+                                           topics to include for consumption.   
+--isolation-level <String>               Set to read_committed in order to      
+                                           filter out transactional messages    
+                                           which are not committed. Set to      
+                                           read_uncommitted to read all         
+                                           messages. (default: read_uncommitted)
+--key-deserializer <String:                                                     
+  deserializer for key>                                                         
+--max-messages <Integer: num_messages>   The maximum number of messages to      
+                                           consume before exiting. If not set,  
+                                           consumption is continual.            
+--offset <String: consume offset>        The offset to consume from (a non-     
+                                           negative number), or 'earliest'      
+                                           which means from beginning, or       
+                                           'latest' which means from end        
+                                           (default: latest)                    
+--partition <Integer: partition>         The partition to consume from.         
+                                           Consumption starts from the end of   
+                                           the partition unless '--offset' is   
+                                           specified.                           
+--property <String: prop>                The properties to initialize the       
+                                           message formatter. Default           
+                                           properties include:                  
+                                          print.timestamp=true|false            
+                                          print.key=true|false                  
+                                          print.offset=true|false               
+                                          print.partition=true|false            
+                                          print.headers=true|false              
+                                          print.value=true|false                
+                                          key.separator=<key.separator>         
+                                          line.separator=<line.separator>       
+                                          headers.separator=<line.separator>    
+                                          null.literal=<null.literal>           
+                                          key.deserializer=<key.deserializer>   
+                                          value.deserializer=<value.            
+                                           deserializer>                        
+                                          header.deserializer=<header.          
+                                           deserializer>                        
+                                         Users can also pass in customized      
+                                           properties for their formatter; more 
+                                           specifically, users can pass in      
+                                           properties keyed with 'key.          
+                                           deserializer.', 'value.              
+                                           deserializer.' and 'headers.         
+                                           deserializer.' prefixes to configure 
+                                           their deserializers.                 
+--skip-message-on-error                  If there is an error when processing a 
+                                           message, skip it instead of halt.    
+--timeout-ms <Integer: timeout_ms>       If specified, exit if no message is    
+                                           available for consumption for the    
+                                           specified interval.                  
+--topic <String: topic>                  The topic to consume on.               
+--value-deserializer <String:                                                   
+  deserializer for values>                                                      
+--version                                Display Kafka version.                 
+--whitelist <String: Java regex          DEPRECATED, use --include instead;     
+  (String)>                                ignored if --include specified.      
+                                           Regular expression specifying list   
+                                           of topics to include for consumption.
+
+* CREAR UN CONSUMIDOR A UN TOPICO
+
+Por defecto al crear un consumidor de consola a un topico, inicia su lectura al final del topico, es decir, leera todos mensajes que despues de crearse el consumidor de consola.
+
+por ejemplo:
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic
+^CProcessed a total of 0 messages
+
+Para evidenciar que el consumidor obtenga los mensajes, es necesario producir mensajes.
+
+Productor:
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic
+>esto trabaja
+>otra prueba
+>
+
+Consumidor:
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic
+esto trabaja
+otra prueba
+
+* CONSUMIR MENSAJES DE UN TOPICO DESDE EL PRINCIPIO
+
+Es importate tener presente que el orden en que se imprimen los mensajes es el que encuentre en la particion, y como los mensajes de un topico van a diferentes particiones entonces no se mostrara el orden en el los productores fueron creandolos.
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic --from-beginning
+solo por diversion
+ejemplo valor
+valor1
+valor2
+value3
+esto trabaja
+otra prueba 2
+Mi nombre es Gerlin
+Tengo 34 años
+Vivo en españa
+value1
+value2
+valor3
+Hola Mundo
+Mi apellido es Torres
+algun mensaje atascado
+estamos aprendiendo
+Gerlin
+otra prueba
+
+* CONSUMIR MENSAJES MOSTRANDO CLAVE, VALOR Y TIEMPO
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic --formatter kafka.tools.DefaultMessageFormatter --property print.timestamp=true --property print.key=true --property print.value=true --from-beginning
+CreateTime:1649700077435        null    solo por diversion
+CreateTime:1649762318822        ejemplo key     ejemplo valor
+CreateTime:1649762574901        clave   valor1
+CreateTime:1649762596569        clave   valor2
+CreateTime:1649762666011        clave   value3
+CreateTime:1649763815450        null    esto trabaja
+CreateTime:1649764049277        null    otra prueba 2
+CreateTime:1649699313106        null    Mi nombre es Gerlin
+CreateTime:1649699546138        null    Tengo 34 años
+CreateTime:1649699777584        null    Vivo en españa
+CreateTime:1649762628100        mykey   value1
+CreateTime:1649762645646        mykey   value2
+CreateTime:1649762683077        mykey   valor3
+CreateTime:1649699298653        null    Hola Mundo
+CreateTime:1649699422910        null    Mi apellido es Torres
+CreateTime:1649700071360        null    algun mensaje atascado
+CreateTime:1649700092975        null    estamos aprendiendo
+CreateTime:1649762329680        user_id_1234    Gerlin
+CreateTime:1649763878047        null    otra prueba
+CreateTime:1649765439225        null    nuevo mensaje
+
+*********************** 38. Kafka Consumer in Group ***********************
+
+INTRODUCCION
+
+CLI consumidor en grupos con kafka-console-consumer.sh
+1. Aprenderemos sobre el parametro --group.
+2. Aprenderemos como se dividen las particiones entre varios consumidores CLI.
+
+* CONSUMIDORES EN GRUPO
+
+Si existen mas consumidores que particiones, solo recibiran los mensajes la cantidad de consumidores que de particiones existan, es decir, que algunos consumidores quedaran inactivos ya que nunca recibiran mensajes.
+
+Productor:
+
+kafka/kafka_2.13-3.1.0$ kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic
+>hola mundo!
+>one
+>two
+>two
+>two
+>three
+>four
+>
+
+Consumidor 1: Kafka le asigno la lectura en la particion 0
+
+gotorres@gotorres:~/Documentos/to
+ols/kafka/kafka_2.13-3.1.0$ kafka-console-consume
+r.sh --bootstrap-server localhost:9092 --topic first_topic --group my-first-application
+two
+four
+
+Consumidor 2: Kafka le asigno la lectura en la particion 1
+
+gotorres@gotorres:~/Documentos/tools/kafkgotorres@gotorres:~/Documentos/tools/kafka
+/kafka_2.13-3.1.0$ kafka-console-consume
+r.sh --bootstrap-server localhost:9092 --topic first_topic --group my-first-application
+one
+two
+
+Consumidor 3: Kafka le asigno la lectura en la particion 2
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic --group my-first-application
+two
+three
+
+* ¿QUE PASA SI CREO UN CONSUMIDOR A UN GRUPO Y LO PARAMTRIZO CON --from-beginning?
+
+El consumidor nunca obtendra lectura de los mensajes desde un inicio, ya que los consumidores del grupo ya han hecho lectura de los mensajes.
+
+* ¿QUE PASA SI CREO 2 CONSUMIDORES ASIGNADORES CADA UNO A GRUPOS DIFERENTES?
+
+Cada consumidor obtendra lectura de los mensajes producidos.
+
+
+*********************** 39. Kafka Consumer Groups CLI ***********************
+
+INTRODUCCION
+
+Vamos a hechar un vistazo a la CLI de kafka-consumer-groups.sh, ya que veremos como podemos restablecer, eliminar, etc. grupos de consumidores.
+
+1. Listar los grupos de consumidores
+2. Describir un grupo de consumidores.
+
+* EJECUTAR LA CLI DEL GRUPO DE CONSUMIDORES DE KAFKA
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-consumer-groups.sh
+Missing required argument "[bootstrap-server]"
+Option                                  Description                            
+------                                  -----------                            
+--all-groups                            Apply to all consumer groups.          
+--all-topics                            Consider all topics assigned to a      
+                                          group in the `reset-offsets` process.
+--bootstrap-server <String: server to   REQUIRED: The server(s) to connect to. 
+  connect to>                                                                  
+--by-duration <String: duration>        Reset offsets to offset by duration    
+                                          from current timestamp. Format:      
+                                          'PnDTnHnMnS'                         
+--command-config <String: command       Property file containing configs to be 
+  config property file>                   passed to Admin Client and Consumer. 
+--delete                                Pass in groups to delete topic         
+                                          partition offsets and ownership      
+                                          information over the entire consumer 
+                                          group. For instance --group g1 --    
+                                          group g2                             
+--delete-offsets                        Delete offsets of consumer group.      
+                                          Supports one consumer group at the   
+                                          time, and multiple topics.           
+--describe                              Describe consumer group and list       
+                                          offset lag (number of messages not   
+                                          yet processed) related to given      
+                                          group.                               
+--dry-run                               Only show results without executing    
+                                          changes on Consumer Groups.          
+                                          Supported operations: reset-offsets. 
+--execute                               Execute operation. Supported           
+                                          operations: reset-offsets.           
+--export                                Export operation execution to a CSV    
+                                          file. Supported operations: reset-   
+                                          offsets.                             
+--from-file <String: path to CSV file>  Reset offsets to values defined in CSV 
+                                          file.                                
+--group <String: consumer group>        The consumer group we wish to act on.  
+--help                                  Print usage information.               
+--list                                  List all consumer groups.              
+--members                               Describe members of the group. This    
+                                          option may be used with '--describe' 
+                                          and '--bootstrap-server' options     
+                                          only.                                
+                                        Example: --bootstrap-server localhost: 
+                                          9092 --describe --group group1 --    
+                                          members                              
+--offsets                               Describe the group and list all topic  
+                                          partitions in the group along with   
+                                          their offset lag. This is the        
+                                          default sub-action of and may be     
+                                          used with '--describe' and '--       
+                                          bootstrap-server' options only.      
+                                        Example: --bootstrap-server localhost: 
+                                          9092 --describe --group group1 --    
+                                          offsets                              
+--reset-offsets                         Reset offsets of consumer group.       
+                                          Supports one consumer group at the   
+                                          time, and instances should be        
+                                          inactive                             
+                                        Has 2 execution options: --dry-run     
+                                          (the default) to plan which offsets  
+                                          to reset, and --execute to update    
+                                          the offsets. Additionally, the --    
+                                          export option is used to export the  
+                                          results to a CSV format.             
+                                        You must choose one of the following   
+                                          reset specifications: --to-datetime, 
+                                          --by-period, --to-earliest, --to-    
+                                          latest, --shift-by, --from-file, --  
+                                          to-current.                          
+                                        To define the scope use --all-topics   
+                                          or --topic. One scope must be        
+                                          specified unless you use '--from-    
+                                          file'.                               
+--shift-by <Long: number-of-offsets>    Reset offsets shifting current offset  
+                                          by 'n', where 'n' can be positive or 
+                                          negative.                            
+--state [String]                        When specified with '--describe',      
+                                          includes the state of the group.     
+                                        Example: --bootstrap-server localhost: 
+                                          9092 --describe --group group1 --    
+                                          state                                
+                                        When specified with '--list', it       
+                                          displays the state of all groups. It 
+                                          can also be used to list groups with 
+                                          specific states.                     
+                                        Example: --bootstrap-server localhost: 
+                                          9092 --list --state stable,empty     
+                                        This option may be used with '--       
+                                          describe', '--list' and '--bootstrap-
+                                          server' options only.                
+--timeout <Long: timeout (ms)>          The timeout that can be set for some   
+                                          use cases. For example, it can be    
+                                          used when describing the group to    
+                                          specify the maximum amount of time   
+                                          in milliseconds to wait before the   
+                                          group stabilizes (when the group is  
+                                          just created, or is going through    
+                                          some changes). (default: 5000)       
+--to-current                            Reset offsets to current offset.       
+--to-datetime <String: datetime>        Reset offsets to offset from datetime. 
+                                          Format: 'YYYY-MM-DDTHH:mm:SS.sss'    
+--to-earliest                           Reset offsets to earliest offset.      
+--to-latest                             Reset offsets to latest offset.        
+--to-offset <Long: offset>              Reset offsets to a specific offset.    
+--topic <String: topic>                 The topic whose consumer group         
+                                          information should be deleted or     
+                                          topic whose should be included in    
+                                          the reset offset process. In `reset- 
+                                          offsets` case, partitions can be     
+                                          specified using this format: `topic1:
+                                          0,1,2`, where 0,1,2 are the          
+                                          partition to be included in the      
+                                          process. Reset-offsets also supports 
+                                          multiple topic inputs.               
+--verbose                               Provide additional information, if     
+                                          any, when describing the group. This 
+                                          option may be used with '--          
+                                          offsets'/'--members'/'--state' and   
+                                          '--bootstrap-server' options only.   
+                                        Example: --bootstrap-server localhost: 
+                                          9092 --describe --group group1 --    
+                                          members --verbose                    
+--version                               Display Kafka version.
+
+* LISTAR LOS GRUPOS DE CONSUMIDORES
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+my-first-application
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic --group my-second-application
+^CProcessed a total of 0 messages
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+my-first-application
+my-second-application
+
+* DESCRIBIR UN GRUPO
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my-first-application
+
+Consumer group 'my-first-application' has no active members.
+
+GROUP                TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+my-first-application first_topic     0          9               9               0               -               -               -
+my-first-application first_topic     1          10              10              0               -               -               -
+my-first-application first_topic     2          8               8               0               -               -               -
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic
+>otro mensaje para revisar los offset
+>^Cgotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my-first-application
+
+Consumer group 'my-first-application' has no active members.
+
+GROUP                TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+my-first-application first_topic     0          9               9               0               -               -               -
+my-first-application first_topic     1          10              10              0               -               -               -
+my-first-application first_topic     2          8               9               1               -               -               -
+Arriba se describe el grupo 'my-first-application', el cual no tiene miembros del grupo activos:
+...
+(Se crea un consumidor)
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic --group my-first-application
+otro mensaje para revisar los offset
+...
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --describe --group my-first-application
+
+GROUP                TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                           HOST            CLIENT-ID
+my-first-application first_topic     0          9               9               0               console-consumer-8fc436dc-13e8-48be-9a4e-f743d86dd04a /127.0.0.1      console-consumer
+my-first-application first_topic     1          10              10              0               console-consumer-8fc436dc-13e8-48be-9a4e-f743d86dd04a /127.0.0.1      console-consumer
+my-first-application first_topic     2          9               9               0               console-consumer-8fc436dc-13e8-48be-9a4e-f743d86dd04a /127.0.0.1      console-consumer
+
+GROUP: Grupo que describimos
+TOPIC: El topico al que esta subscrito el grupo
+PARTITION: Particiones del topico
+CURRENT-OFFSET: offset actuales, esto es lo lejos que este grupo de consumidores ha estado leyendo nuestro tema de kafka.
+LOG-END-OFFSET: offset final del registro, es que tan lejos, que tan profundo es el topico
+LAG (retrazo): es la cantidad de mensajes que aun el grupo no ha leido de dicha particion.
+CONSUMER-ID: Identificador unico que asigna kafka al consumidor que atiende la particion.
+HOST: nombre o IP del host desde donde se ejecuta el consumidor
+CLIENT-ID: Identificador unico del cliente usado como consumidor (Ejemplo console-consumer).
+
+* GRUPOS EFIMEROS
+
+Cuando creamos un consumidor y no le relacionamos a un grupo, kafka lo asigna a un grupo temporal (efimero). Es temporar porque al desconectarse el consumidor este grupo desaparece.
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+my-first-application
+my-second-application
+...
+(Se crea un consumidor sin grupo)
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic --from-beginning
+solo por diversion
+ejemplo valor
+valor1
+valor2
+value3
+esto trabaja
+otra prueba 2
+two
+four
+Mi nombre es Gerlin
+Tengo 34 años
+Vivo en españa
+value1
+value2
+valor3
+nuevo mensaje
+hola mundo!
+two
+three
+Hola Mundo
+Mi apellido es Torres
+algun mensaje atascado
+estamos aprendiendo
+Gerlin
+otra prueba
+one
+two
+otro mensaje para revisar los offset
+...
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+console-consumer-85323
+my-first-application
+my-second-application
+
+*********************** 40. Resetting Offsets ***********************
+
+INTRODUCCION
+
+Como restablecer el offset usando el comando de grupos de consumidores de kafka. En la siguiente practica:
+
+1. Iniciar/Parar un consumidor de consola.
+2. Restablecer el offset
+3. Iniciar un consumidor de consola y ver el resultado
+
+* CONSUMER GROUP - RESET OFFSETS kafka-consumer-groups.sh
+
+NOTA: No es posible resetear el offset si existe un consumidor activo.
+
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$
+....
+Se crea un productor
+....
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-console-producer.sh --bootstrap-server localhost:9092 --topic first_topic
+>Hola
+>Adios
+>Mensaje
+....
+Se crea un consumidor
+....
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic --group my-first-consumer-group-application
+[2022-05-03 12:43:10,765] WARN [Consumer clientId=console-consumer, groupId=my-first-consumer-group-application] Error while fetching metadata with correlation id 2 : {first_topic=LEADER_NOT_AVAILABLE} (org.apache.kafka.clients.NetworkClient)
+[2022-05-03 12:43:10,884] WARN [Consumer clientId=console-consumer, groupId=my-first-consumer-group-application] Error while fetching metadata with correlation id 4 : {first_topic=LEADER_NOT_AVAILABLE} (org.apache.kafka.clients.NetworkClient)
+Hola
+Adios
+Mensaje
+...
+Nos salimos del consumidor y Se continua
+...
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --list
+my-first-consumer-group-application
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group my-first-consumer-group-application --describe
+
+GROUP                               TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID                                           HOST            CLIENT-ID
+my-first-consumer-group-application first_topic     0          3               3               0               console-consumer-dc84d069-46de-4ad1-a067-67d8f188ff1a /127.0.0.1      console-consumer
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group my-first-consumer-group-application --group my-first-consumer-group-application --reset-offsets --to-earliest --execute
+One of the reset scopes should be defined: --all-topics, --topic.
+Option                                  Description                            
+------                                  -----------                            
+--all-groups                            Apply to all consumer groups.          
+--all-topics                            Consider all topics assigned to a      
+                                          group in the `reset-offsets` process.
+--bootstrap-server <String: server to   REQUIRED: The server(s) to connect to. 
+  connect to>                                                                  
+--by-duration <String: duration>        Reset offsets to offset by duration    
+                                          from current timestamp. Format:      
+                                          'PnDTnHnMnS'                         
+--command-config <String: command       Property file containing configs to be 
+  config property file>                   passed to Admin Client and Consumer. 
+--delete                                Pass in groups to delete topic         
+                                          partition offsets and ownership      
+                                          information over the entire consumer 
+                                          group. For instance --group g1 --    
+                                          group g2                             
+--delete-offsets                        Delete offsets of consumer group.      
+                                          Supports one consumer group at the   
+                                          time, and multiple topics.           
+--describe                              Describe consumer group and list       
+                                          offset lag (number of messages not   
+                                          yet processed) related to given      
+                                          group.                               
+--dry-run                               Only show results without executing    
+                                          changes on Consumer Groups.          
+                                          Supported operations: reset-offsets. 
+--execute                               Execute operation. Supported           
+                                          operations: reset-offsets.           
+--export                                Export operation execution to a CSV    
+                                          file. Supported operations: reset-   
+                                          offsets.                             
+--from-file <String: path to CSV file>  Reset offsets to values defined in CSV 
+                                          file.                                
+--group <String: consumer group>        The consumer group we wish to act on.  
+--help                                  Print usage information.               
+--list                                  List all consumer groups.              
+--members                               Describe members of the group. This    
+                                          option may be used with '--describe' 
+                                          and '--bootstrap-server' options     
+                                          only.                                
+                                        Example: --bootstrap-server localhost: 
+                                          9092 --describe --group group1 --    
+                                          members                              
+--offsets                               Describe the group and list all topic  
+                                          partitions in the group along with   
+                                          their offset lag. This is the        
+                                          default sub-action of and may be     
+                                          used with '--describe' and '--       
+                                          bootstrap-server' options only.      
+                                        Example: --bootstrap-server localhost: 
+                                          9092 --describe --group group1 --    
+                                          offsets                              
+--reset-offsets                         Reset offsets of consumer group.       
+                                          Supports one consumer group at the   
+                                          time, and instances should be        
+                                          inactive                             
+                                        Has 2 execution options: --dry-run     
+                                          (the default) to plan which offsets  
+                                          to reset, and --execute to update    
+                                          the offsets. Additionally, the --    
+                                          export option is used to export the  
+                                          results to a CSV format.             
+                                        You must choose one of the following   
+                                          reset specifications: --to-datetime, 
+                                          --by-period, --to-earliest, --to-    
+                                          latest, --shift-by, --from-file, --  
+                                          to-current.                          
+                                        To define the scope use --all-topics   
+                                          or --topic. One scope must be        
+                                          specified unless you use '--from-    
+                                          file'.                               
+--shift-by <Long: number-of-offsets>    Reset offsets shifting current offset  
+                                          by 'n', where 'n' can be positive or 
+                                          negative.                            
+--state [String]                        When specified with '--describe',      
+                                          includes the state of the group.     
+                                        Example: --bootstrap-server localhost: 
+                                          9092 --describe --group group1 --    
+                                          state                                
+                                        When specified with '--list', it       
+                                          displays the state of all groups. It 
+                                          can also be used to list groups with 
+                                          specific states.                     
+                                        Example: --bootstrap-server localhost: 
+                                          9092 --list --state stable,empty     
+                                        This option may be used with '--       
+                                          describe', '--list' and '--bootstrap-
+                                          server' options only.                
+--timeout <Long: timeout (ms)>          The timeout that can be set for some   
+                                          use cases. For example, it can be    
+                                          used when describing the group to    
+                                          specify the maximum amount of time   
+                                          in milliseconds to wait before the   
+                                          group stabilizes (when the group is  
+                                          just created, or is going through    
+                                          some changes). (default: 5000)       
+--to-current                            Reset offsets to current offset.       
+--to-datetime <String: datetime>        Reset offsets to offset from datetime. 
+                                          Format: 'YYYY-MM-DDTHH:mm:SS.sss'    
+--to-earliest                           Reset offsets to earliest offset.      
+--to-latest                             Reset offsets to latest offset.        
+--to-offset <Long: offset>              Reset offsets to a specific offset.    
+--topic <String: topic>                 The topic whose consumer group         
+                                          information should be deleted or     
+                                          topic whose should be included in    
+                                          the reset offset process. In `reset- 
+                                          offsets` case, partitions can be     
+                                          specified using this format: `topic1:
+                                          0,1,2`, where 0,1,2 are the          
+                                          partition to be included in the      
+                                          process. Reset-offsets also supports 
+                                          multiple topic inputs.               
+--verbose                               Provide additional information, if     
+                                          any, when describing the group. This 
+                                          option may be used with '--          
+                                          offsets'/'--members'/'--state' and   
+                                          '--bootstrap-server' options only.   
+                                        Example: --bootstrap-server localhost: 
+                                          9092 --describe --group group1 --    
+                                          members --verbose                    
+--version                               Display Kafka version.                 
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group my-first-consumer-group-application --group my-first-consumer-group-application --reset-offsets --to-earliest --execute --all-topics
+
+GROUP                          TOPIC                          PARTITION  NEW-OFFSET     
+my-first-consumer-group-application first_topic                    0          0              
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group my-first-consumer-group-application --describe
+
+Consumer group 'my-first-consumer-group-application' has no active members.
+
+GROUP                               TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+my-first-consumer-group-application first_topic     0          0               3               3               -               -               -
+....
+Se crea un nuevo consumidor y consumira otra vez la cola de mensajes
+....
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic --group my-first-consumer-group-application
+Hola
+Adios
+Mensaje
+
+* RESET OFFSET: especificando unos cuantos offset hacia atras:
+
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group my-first-consumer-group-application --group my-first-consumer-group-application --reset-offsets --shift-by -2 --execute --all-topics
+
+GROUP                          TOPIC                          PARTITION  NEW-OFFSET     
+my-first-consumer-group-application first_topic                    0          1              
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-consumer-groups.sh --bootstrap-server localhost:9092 --group my-first-consumer-group-application --describe
+
+Consumer group 'my-first-consumer-group-application' has no active members.
+
+GROUP                               TOPIC           PARTITION  CURRENT-OFFSET  LOG-END-OFFSET  LAG             CONSUMER-ID     HOST            CLIENT-ID
+my-first-consumer-group-application first_topic     0          1               3               2               -               -               -
+...
+abrir un consumidor y solo leera los 2 ultimos mensajes
+...
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic first_topic --group my-first-consumer-group-application
+Adios
+Mensaje

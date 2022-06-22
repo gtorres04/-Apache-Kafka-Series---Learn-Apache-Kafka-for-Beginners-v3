@@ -1,0 +1,267 @@
+**************************** TOPICS, PARTITIONS AND OFFSETS **************************************
+TOPICS: 
+* un topic es como una tabla en una base de datos, pero sin restricciones, por lo tanto un mensaje es como un registro en dicha tabla.
+* Puedes enviar cualquier tipo de informacion a un topico de kafka, por lo que no existe verificacion de los datos que llegan al topico. 
+* Puedes tener tantos topicos como desees en un cluster de kafka y la forma de identificar un topico en el cluster es por su nombre.
+* Los topics admiten cualquier tipo de formato de mensaje, como: JSON Avro, Archivos de texto.
+* la secuencia de los mensajes en un topic se denomina flujo de datos.
+* Los mensajes en un topic no se pueden consultar, a mensos que se use un productor Kafka (Kafka producers) para enviar los mensajes y un consumidor kafka (Kafka consumer) para leer los datos.
+* Los topics son inmutables, es decir al llegar un mensaje a un topic no es posible eliminar o modificar
+
+PARTITIONS AND OFFSETS
+
+* Los topics pueden dividirse en partitions, por ejemplo un tema puede estar compuesto por 100 particiones.
+* Otro eejemplo, Tenemos un topic con tres particiones: Partition 0, 1 y 2. Entonces los mensajes enviados a este topic terminaran en estas particiones.
+* Los mensajes que llegan dentro de cada particion se ordenaran por un identificador secuencial (desde 0 hasta lo que sea) llamado KAFKA PARTITION OFFSET
+
+TOPICS, PARTITIONS AND OFFSETS - IMPORTANT NOTES
+* Los mensajes que son escritos en las particiones de un topic son inmutables
+* Los mensajes en Kafka se conservan durante un tiempo limitado. El tiempo limite es configuables, pero por defecto es una semana.
+* los OFFSET solo tienen sentido de orden dentro de una particion. Ya que los offset pueden repetirse en las diferentes partitions.
+* El offset 0 existe en todas las particiones del topic, pero el mensaje en el offset 0 de cada particion no representa la misma informacion.
+* La secuencia de los OFFSET no se reutilizan a pesar de que el mensaje ya no exista.
+* Los mensajes enviados a un topic se almacenan aleatoriamente en una particion, a menos que proporcione una clave.
+
+**************************** 8. PRODUCERS AND MESSAGE KEYS **************************************
+
+PRODUCERS:
+* Los productores escriben datos en los topics
+* Los productores conocen de antemano a que partition escriben y ademas a que corredor (broker: servidor kafka).
+* MITO: se piensa que kafka decide al final el servidor y particion en el que se escriben los datos.
+* En caso de que un servidor de kafka falle, los productores saben como recuperarse automaticamente.
+
+PRODUCERS: Message Keys
+* Los productores pueden elegir enviar una clave con el mensaje (string, number, binary, etc).
+* Si la clave=null los datos son enviados a todas las particiones, permitiendo asi alta disponibilidad del mensaje entre las particiones del topic.
+* Si la clave!=null entonces todos los mensajes para esa clave siempre aterrizaran en la misma particion, ya que kafka usa un sistema de hashing usando esta clave para decidir en que particion colocar el mensaje.
+* Esta clave es tipico usarla en escenarios donde es necesario ordenar por un campo especifico.
+
+KAFKA MESSAGES ANATOMY
+* Estas son las partes de un mensaje kafka cuando lo crea el productor:
+    - key - binary (puede ser null)
+    - Value - binary (pude ser null): contenido del mensaje.
+    - Compression Type (none,gzip,snappy,lz4,zstd): podemos agregar compresion a nuestros mensajes, si queremos que sean mas pequeños.
+    - Headers (optional): Tambien podemos agregar encabezados en formato clave-valor.
+    - Partition + Offset: la particion a la que se enviara el mensaje + su orden secuencial (offset).
+    - Timestamp (system or user set): Tiempo establecido por el sistema o por el usuario.
+
+KAFKA MESSAGE SERIALIZER
+
+¿Como se crean esto mensajes? R/: Tenemos lo que se llama un serializador de mensajes Kafka.
+ 
+* Kafka solo acepta bytes como entrada desde los productores y envia bytes como salida a los consumidores.
+* La serailizacion significa transaformar los objetos ó datos a bytes.
+* Los serializadores se usaran solo para serializar la parte key y value del mensaje que crea un productor.
+* En los productores podemos encontrar muchos serializadores de mensajes segun el tipo de dato que tenga la parte Key y value del mensaje.
+* Si la parte Key es un tipo INT utilizara por ejemplo IntegerSerializar y si la parte value es un STRING utilizara StringSerializer, conviertiendo estos valores (numerico y cadena) en binarios.
+* Serializadores comunes: String (incluyendo JSON), int, float, Avro, Protobuf. etc.
+
+FOR THE CURIOUS: KAFKA MESSAGE KEY HASHING
+
+* Del lado del productor existe algo llamado particionador Kafka, es un codigo logico que toma un registro (mensaje) y determina a cual particion enviarlo.
+* Key Hashing, es el proceso de terminar el mapeo de una clave a una particion.
+* Por defecto el particionador kafka, las claves son hasheadas usando el algoritmo MURMUR2.
+* la forma en la que determina el productor con este algoritmo MURMUR2 es: targetPartition = Math.abs(Utils.murmur2(keyBytes)) % (numPartitions - 1)
+
+**************************** 9. CONSUMERS & DESERIALIZATION **************************************
+
+CONSUMERS
+* Los consumidores leen datos desde un topic (topico identificado por nombre).
+* Los comsumidores implementan el modelo de grupo, lo que significa que estos solicitaran datos a los brokers de kafka (los servidores) y luego obtendran una respuesta.
+* MITO: No es el broker de kafka el que envia los datos a los consumidores.
+* Los consumidores automaticamente conocen desde cual broker leer los mensajes.
+* En caso de que un broker falle, los consumidores conocen como recuperarse.
+* Los mensajes son leidos en orden desde el mas bajo a el mas alto OFFSET (Orden Secuencial) en cada particion.
+* Un consumidor puede leer mensajes de una particion en especifica o de mas una particion.
+* En caso de que un consumidor lea mensajes de mas de una particion no existe garantia del orden secuencial (offset) entre todas las particiones, solo se garantiza el orden secuencial (offset) de lectura entre la misma particion.
+
+CONSUMER DESERIALIZER
+* Los consumidores llen los mensajes y necesitan transformar los bytes a objetos/datos legibles para el consumidor.
+* Los deserealizores son usados sobre la parte VALUE y KEY del mensaje leido.
+* En los consumidores podemos encontrar muchos deserializadores de mensajes segun el tipo de dato al que se deba transformar la parte Key y value del mensaje.
+* Si la parte Key debe transformarse al tipo INT utilizara por ejemplo IntegerDeserializar y si la parte value debe transformarse a un STRING utilizara StringDeserializer, conviertiendo estos valores binarios en numerico y cadena respectivamente.
+* Deserializadores comunes: String (incluyendo JSON), int, float, Avro, Protobuf. etc.
+
+**************************** 10. CONSUMERS GROUPS & CONSUMERS OFFSET **************************************
+
+CONSUMERS GROUPS
+* Todos los consumidores en una aplicacion leen datos como un grupo de consumidores.
+* Cada consumidor en un grupo lee desde particiones exclusivas.
+
+CONSUMERS GROUPS - WHAT IF TOO MANY CONSUMERS?
+* Si existen mas consumidores que particiones, algunos consumidores estaran inactivos.
+
+MULTIPLE CONSUMERS GROUP ON ONE TOPIC
+* En apache kafka es aceptable tener multiples grupos de consumidores sobre el mismo topico.
+* Cada grupo de consumidores ha de leer todos los mens ajes de las particiones del topico.
+
+CONSUMER OFFSETS
+* Kafka almacena los offsets que un grupo de consumidores ha leido.
+* los offsets confirmados estan en el topico de kafka nombrados asi __consumer_offsets
+* Cuando un consumidor en un grupo ha procesado los datos recibidos desde kafka, los pffsets seran confirmados periodicamente. (El broker kafka escribira __consumer_offsets, no el grupo en si)
+* Si un consumidor muere, este sera capas de leer los mensajes por donde los dejo, gracias a los offsets del consumidor confirmados.
+
+DELIVERY SEMANTICS FOR CONSUMERS:
+* Por defecto los consumidores java automaticamente confirman los offsets (at least once)
+* Existen 3 delivery semantics (Entregas semanticas), si se elige confirmaciones de offsets manualmente:
+    + AT LEAST ONCE (Al menos una vez. Usualmente preferido): 
+        - Los offsets son confirmados despues que el mensaje es procesado.
+        - Si elprocesado del mensaje termino en error, el mensaje no sera confirmado y sera leido otra vez.
+        - Esto puede resultar en que un mensaje se procese mas de una vez. Por tanto asegurar que el procesado de mensajes sea idenpotente.
+    + AT MOST ONCE (Maximo 1 vez):
+        - Los offsets son confirmados apenas el mensaje sea recibido.
+        - Si el procesado del mensaje termina en error, estos no se procesaran y se perderan, ya que no se leeran otra vez.
+    + EXACTLY ONCE
+        - For Kafka => Kafka workflows: usa la API transactional (Facil con Kafka Streams API)
+        - For Kafka => External System workflows: usa un consumidor idempotente.
+
+**************************** 11. Brokers and Topics **************************************
+
+KAFKA BROKERS:
+* Un cluster de kafka es un conjunto de multiplers agentes de kafka, siendo un agente un solo servidor KAFKA.
+* Un broker kafka se identifica con su ID (integer).
+* Cada broker contiene algunas particiones de un topico, eso significa que sus datos se distribuiran entre todos los brokers.
+* Despues de conectar con cualquier broker (llamado un broker de arranque), seras conectado al cluster completo (Los clientes Kafka tienen un mecanismo inteligente para esto)
+* Un buen numero de brokers para iniciar es 3, pero algunos grandes clusters tiene sobre los 100 brokers.
+
+BROKERS AND TOPICS: ¿Como se relacionan los brokers, los topics y las particiones de Kafka?
+
+POR EJEMPLO:
++ Tenemos un topico con tres particiones (Partition 0, Partition 1 y Partition 2) llamado "Topic-A".
++ Tenemos un segundo topico con 2 particiones (Partition 0 y Partition 1) llamado "Topic-B".
++ Tenemos 3 agentes kafka (3 brokers Kafka): Broker 101, Broker 102 y Broker 103.
+    + Broker 101
+        + Topic-A 
+            - Partition 0
+        + Topic-B
+            - Partition 1
+    + Broker 102
+        + Topic-A
+            - Partition 2
+        + Topic-B
+            - Partition 0
+    + Broker 103
+        + Topic-A
+            - Partition 1
+
+* Note que los datos estan distribuidos en los 3 brokers, sin embargo, en el broker 103 no tiene datos del Topic-B, porque las 2 particiones ya se cubrieron en los brokers 101 y 102.
+
+KAFKA BROKER DISCOVERY: Hablemos sobre el mecanismo de descubrimiento de intermediarios (Brokers)
+
+* Cada agente de kafka en su cluster es denominado servidor de arranque.
+* Un cliente kafka solo necesita conectar a un broker del cluster, y este broker le suministrara todo lo necesario como:
+    - Conocer como conectarse con el cluster entero.
+    - Conocer todos los brokers que conforman el cluster
+    - Conocer los topicos y particiones que tienen los brokers del cluster.
+
+**************************** 12. TOPIC REPLICATION **************************************
+
+INTRO: Aprender sobre el factor de replicacion de los topicos de kafka y lo que implica para los consumidores y productores.
+
+TOPIC REPLICATION FACTOR
+* Los topicos deberian tener un factor de replicacion > 1 (Usualmente entre 2 y 3).
+* Esta es la forma si un broker es caido, otro broker puede servir los datos.
+
+* El factor de replicacion, Es el mecanimos mediante el cual un broker del cluster guarda una copia de una particion que existe en otro broker del cluster. Por ejemplo: tenemos un topic con 2 particiones (Partition 0 y Partition 1) llamado "Topic-A", distribuidos en un cluster de 3 brokers:
+    + Broker 101
+        + Topic-A
+            - Partition 0
+    + Broker 102
+        + Topic-A
+            - Partition 1
+    + Broker 103
+* Ahora siguiendo con el anterior ejemplo el topico "Topic-A" tiene Factor de replicacion de 2, esto quiere decir que por cada particion debe existir una copia en otro broker del cluster:
+    + Broker 101
+        + Topic-A
+            - Partition 0
+    + Broker 102
+        + Topic-A
+            - Partition 1
+            - Partition 0 (Copia creada por el factor de replicacion 2)
+    + Broker 103
+        + Topic-A
+            - Partition 1 (Copia creada por el factor de replicacion 2)
+* El factor de replicacion
+
+CONCEPT OF LEADER FOR A PARTITION
+
+* Es necesario de que exista una PARTICION LIDER de las replicas que existan de una particion.
+* En cualquier caso solo un broker puede ser lider de la particion que es lider.
+* La regla es que los productores solo enviaran datos a el broker lider de una particion.
+* Regresando al ejemplo anterior los brokers lideres son el 101 y 102. el broker 103 no es lider porque solo replica los datos de la particion 1:
+    + Broker 101 (Broker lider de la particion "Partition 0")
+        + Topic-A
+            - Partition 0 (Particion Lider)
+    + Broker 102 (Broker lider de la particion "Partition 1")
+        + Topic-A
+            - Partition 1 (Particion Lider)
+            - Partition 0 (Copia creada por el factor de replicacion 2)
+    + Broker 103
+        + Topic-A
+            - Partition 1 (Copia creada por el factor de replicacion 2)
+* Cada particion tiene una particion lider y multiples ISR (in-sync replica (replicas sincronizadas))
+
+DEFAULT PRODUCER & CONSUMER BEHAVIOR WITH LEADERS
+
+* Los productores kafka solo pueden escribir en el broker lider de una particion.
+* Los consumidores kafka por defecto leeran desde el broker lider de una particion.
+
+KAFKA CONSUMERS REPLICA FETCHING (Kafka v2.4+)
+* Para esta version (v2.4+) hay una nueva funcion llamada KAFKA CONSUMER REPLICA FETCHING, que permite al consumidor leer desde la replica mas cercana (Geograficamente hablando), y asi se evita tiempos de red en cuanto a latencia.
+
+**************************** 13. PRODUCER ACKNOWLEDGEMENTS & TOPIC DURABILITY *******************************
+
+PRODUCER ACKNOWLEDGEMENTS (ACKS)
+
+Reconocimiento de los productores, es decir, confirmacion de que el mensaje fue escrito correctamente.
+
+* Los productores pueden elegir recibir confirmacion de los mensajes escritos, su configuracion va dada por los siguiente valores en acks:
+    - acks=0: El productor no esperara por la confirmacion del mensaje escrito (Posible perdida de datos)
+    - acks=1: el productor esperara confirmacion de la escritura del broker lider. (perdida limitada de datos)
+    - acks=all: el productor espera confirmacion de la escritura del broker lider y los brokers de replicas. (No perdida de datos)
+
+KAFKA TOPIC DURABILITY
+
+* Para un topica con factor de replicacion de 3, la durabilidad de los datos puede mantenerse con 2 brokers caidos.
+* Como regla, para un factor de replicacion de N, la disponibilidad de los datos permanece con N-1 brokers caidos.
+
+**************************** 14. ZOOKEEPER *******************************
+
+Ha sido la forma en que KAFKA pudo funcionar hasta hoy, pero esta desapareciendo lentamente y sera reemplazado.
+
+* Zookeper administra los brokers de kafka (Mantiene una lista de ellos).
+* Zookeper ayuda en la eleccion de los lideres de las particiones.
+* Zookeper envia notificaciones a Kafka en caso de cambios como:
+    - Nuevos topicos.
+    - brokers caidos.
+    - Brokers arriba.
+    - topicos borrados.
+* Kafka 2.x no puede trabajar sin Zookeeper
+* Kafka 3.x puede trabajar sin Zookeeper (KIP-500), pero usando Kafka Raft.
+* Kafka 4.x no tendra Zookeeper.
+* Zookeeper por diseño opera con un numero de servidores (1,3,5,7), en caso de tener mas de uno tambien tiene un servidor lider y los demas se conocen como Follower (Seguidores)
+* Zookeeper no almacena los offsets de los consumidores desde la version 0.10.
+
+ZOOKEEPER CLUSTER (ENSEMBLE)
+
+* Ejemplo de un cluster de Zookeeper:
+    + Zookeeper Server 1 (Follower)
+        - Kafka Broker 1
+        - Kafka Broker 2
+    + Zookeeper Server 2 (Leader)
+        - Kafka Broker 3
+        - Kafka Broker 4
+    + Zookeeper Server 3 (Follower)
+        - Kafka Broker 5
+* Los servidores Zookeeper Folower se conectar con el servidor Leader y asi es como se obtienen sus metadatos.
+
+SHOULD YOU USE ZOOKEEPER?
+
+* Si trabajas como administrador de infraestructura de Kafka la respuesta es si.
+* Todos los CLI ahora estan apuntando a KAFKA y no ha zookeeper.
+* Recomendacion: a pesar de que Zookeeper sigue haciendo parte del ecosistema de Kafka, desarrolla consumidores y productores conectandose a Kafka y no ha Zookeeper.
+
+
+
+
+

@@ -1,0 +1,48 @@
+*********************INSTALACION (https://www.conduktor.io/kafka-for-beginners)*************************
+
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ cd resources/
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka/resources$ ls
+Conduktor-2.21.2.deb  kafka-beginners-course-main.zip  kafka-for-beginners-code-20220316.zip
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka/resources$ sudo dpkg -i Conduktor-2.21.2.deb 
+[sudo] contraseña para gotorres: 
+Seleccionando el paquete conduktor previamente no seleccionado.
+(Leyendo la base de datos ... 208983 ficheros o directorios instalados actualmente.)
+Preparando para desempaquetar Conduktor-2.21.2.deb ...
+Desempaquetando conduktor (2.21.2-1) ...
+dpkg: problemas de dependencias impiden la configuración de conduktor:
+ conduktor depende de libffi6; sin embargo:
+  El paquete `libffi6' no está instalado.
+
+dpkg: error al procesar el paquete conduktor (--install):
+ problemas de dependencias - se deja sin configurar
+Se encontraron errores al procesar:
+ conduktor
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka/resources$ sudo dpkg -i ./Conduktor-2.21.2.deb 
+(Leyendo la base de datos ... 209825 ficheros o directorios instalados actualmente.)
+Preparando para desempaquetar ./Conduktor-2.21.2.deb ...
+Desempaquetando conduktor (2.21.2-1) sobre (2.21.2-1) ...
+dpkg: problemas de dependencias impiden la configuración de conduktor:
+ conduktor depende de libffi6; sin embargo:
+  El paquete `libffi6' no está instalado.
+
+dpkg: error al procesar el paquete conduktor (--install):
+ problemas de dependencias - se deja sin configurar
+Se encontraron errores al procesar:
+ conduktor
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka/resources$ ^C
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka/resources$ ls
+Conduktor-2.21.2.deb  kafka-beginners-course-main.zip  kafka-for-beginners-code-20220316.zip  libffi6_3.2.1-8_amd64.deb
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka/resources$ sudo dpkg -i ./libffi6_3.2.1-8_amd64.deb 
+Seleccionando el paquete libffi6:amd64 previamente no seleccionado.
+(Leyendo la base de datos ... 209825 ficheros o directorios instalados actualmente.)
+Preparando para desempaquetar ./libffi6_3.2.1-8_amd64.deb ...
+Desempaquetando libffi6:amd64 (3.2.1-8) ...
+Configurando libffi6:amd64 (3.2.1-8) ...
+Procesando disparadores para libc-bin (2.31-0ubuntu9.7) ...
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka/resources$ sudo dpkg -i ./Conduktor-2.21.2.deb 
+(Leyendo la base de datos ... 209830 ficheros o directorios instalados actualmente.)
+Preparando para desempaquetar ./Conduktor-2.21.2.deb ...
+Desempaquetando conduktor (2.21.2-1) sobre (2.21.2-1) ...
+Configurando conduktor (2.21.2-1) ...
+
+

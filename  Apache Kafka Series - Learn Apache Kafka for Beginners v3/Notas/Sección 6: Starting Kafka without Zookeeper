@@ -1,0 +1,398 @@
+ENLACES:
+https://www.conduktor.io/kafka/how-to-install-apache-kafka-on-mac-without-zookeeper-kraft-mode
+https://www.conduktor.io/kafka/how-to-install-apache-kafka-on-linux-without-zookeeper-kraft-mode
+
+***************** 1. LINUX: One Kafka Broker - KRaft Mode (No Zookeeper) ***********************
+
+WARN: KRaft es un modo de accesos a Apache Kafaka desde la version 2.8 y deberia ser usado en el ambiente de desarrollo. Esto no esta listo para PRODUCCION.
+
+1. Debemos generar una ID de Cluster y formatear el almacenamiento con el comando de almacenamiento de Kafka. kafka-storage.sh
+
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-storage.sh random-uuid
+OkMGxsukSxqavGUHoRF4wg
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ kafka-storage.sh format -t OkMGxsukSxqavGUHoRF4wg -c ~/kafka_2.13-3.1.0/config/kraft/server.properties
+Exception in thread "main" java.nio.file.NoSuchFileException: /home/gotorres/kafka_2.13-3.1.0/config/kraft/server.properties
+        at sun.nio.fs.UnixException.translateToIOException(UnixException.java:86)
+        at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:102)
+        at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:107)
+        at sun.nio.fs.UnixFileSystemProvider.newByteChannel(UnixFileSystemProvider.java:214)
+        at java.nio.file.Files.newByteChannel(Files.java:361)
+        at java.nio.file.Files.newByteChannel(Files.java:407)
+        at java.nio.file.spi.FileSystemProvider.newInputStream(FileSystemProvider.java:384)
+        at java.nio.file.Files.newInputStream(Files.java:152)
+        at org.apache.kafka.common.utils.Utils.loadProps(Utils.java:668)
+        at kafka.tools.StorageTool$.$anonfun$main$2(StorageTool.scala:62)
+        at kafka.tools.StorageTool$$$Lambda$7/0x000000006479a550.apply(Unknown Source)
+        at scala.Option.flatMap(Option.scala:283)
+        at kafka.tools.StorageTool$.main(StorageTool.scala:62)
+        at kafka.tools.StorageTool.main(StorageTool.scala)
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ ls
+' Apache Kafka Series - Learn Apache Kafka for Beginners v3'
+gotorres@gotorres:~/Escritorio/CAPACITACION/Kafka$ cd ~
+gotorres@gotorres:~$ cd Documentos/tools/kafka/kafka_2.13-3.1.0/
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ ls
+bin  config  libs  LICENSE  licenses  logs  NOTICE  site-docs
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-storage.sh format -t OkMGxsukSxqavGUHoRF4wg -c ~/Documentos/tools/kafka/kafka_2.13-3.1.0/config/kraft/server.properties
+Formatting /tmp/kraft-combined-logs
+
+2. Iniciar Kafka usando los binarios.
+
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-server-start.sh ~/Documentos/tools/kafka/kafka_2.13-3.0.0/config/kraft/server.properties
+[2022-04-11 12:16:34,745] INFO Registered kafka:type=kafka.Log4jController MBean (kafka.utils.Log4jControllerRegistration$)
+[2022-04-11 12:16:35,173] ERROR Exiting Kafka due to fatal exception (kafka.Kafka$)
+java.nio.file.NoSuchFileException: /home/gotorres/Documentos/tools/kafka/kafka_2.13-3.0.0/config/kraft/server.properties
+        at sun.nio.fs.UnixException.translateToIOException(UnixException.java:86)
+        at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:102)
+        at sun.nio.fs.UnixException.rethrowAsIOException(UnixException.java:107)
+        at sun.nio.fs.UnixFileSystemProvider.newByteChannel(UnixFileSystemProvider.java:214)
+        at java.nio.file.Files.newByteChannel(Files.java:361)
+        at java.nio.file.Files.newByteChannel(Files.java:407)
+        at java.nio.file.spi.FileSystemProvider.newInputStream(FileSystemProvider.java:384)
+        at java.nio.file.Files.newInputStream(Files.java:152)
+        at org.apache.kafka.common.utils.Utils.loadProps(Utils.java:668)
+        at kafka.Kafka$.getPropsFromArgs(Kafka.scala:52)
+        at kafka.Kafka$.main(Kafka.scala:86)
+        at kafka.Kafka.main(Kafka.scala)
+gotorres@gotorres:~/Documentos/tools/kafka/kafka_2.13-3.1.0$ kafka-server-start.sh ~/Documentos/tools/kafka/kafka_2.13-3.1.0/config/kraft/server.properties
+[2022-04-11 12:16:52,224] INFO Registered kafka:type=kafka.Log4jController MBean (kafka.utils.Log4jControllerRegistration$)
+[2022-04-11 12:16:52,751] INFO Setting -D jdk.tls.rejectClientInitiatedRenegotiation=true to disable client-initiated TLS renegotiation (org.apache.zookeeper.common.X509Util)
+[2022-04-11 12:16:53,159] INFO [LogLoader partition=__cluster_metadata-0, dir=/tmp/kraft-combined-logs] Loading producer state till offset 0 with message format version 2 (kafka.log.UnifiedLog$)
+[2022-04-11 12:16:53,161] INFO [LogLoader partition=__cluster_metadata-0, dir=/tmp/kraft-combined-logs] Reloading from producer snapshot and rebuilding producer state from offset 0 (kafka.log.UnifiedLog$)
+[2022-04-11 12:16:53,163] INFO [LogLoader partition=__cluster_metadata-0, dir=/tmp/kraft-combined-logs] Producer state recovery took 2ms for snapshot load and 0ms for segment recovery from offset 0 (kafka.log.UnifiedLog$)
+[2022-04-11 12:16:53,438] INFO [raft-expiration-reaper]: Starting (kafka.raft.TimingWheelExpirationService$ExpiredOperationReaper)
+[2022-04-11 12:16:53,834] INFO [RaftManager nodeId=1] Completed transition to Unattached(epoch=0, voters=[1], electionTimeoutMs=1159) (org.apache.kafka.raft.QuorumState)
+[2022-04-11 12:16:53,848] INFO [RaftManager nodeId=1] Completed transition to CandidateState(localId=1, epoch=1, retries=1, electionTimeoutMs=1376) (org.apache.kafka.raft.QuorumState)
+[2022-04-11 12:16:53,858] INFO [RaftManager nodeId=1] Completed transition to Leader(localId=1, epoch=1, epochStartOffset=0, highWatermark=Optional.empty, voterStates={1=ReplicaState(nodeId=1, endOffset=Optional.empty, lastFetchTimestamp=OptionalLong.empty, hasAcknowledgedLeader=true)}) (org.apache.kafka.raft.QuorumState)
+[2022-04-11 12:16:53,984] INFO Registered signal handlers for TERM, INT, HUP (org.apache.kafka.common.utils.LoggingSignalHandler)
+[2022-04-11 12:16:53,992] INFO [kafka-raft-io-thread]: Starting (kafka.raft.KafkaRaftManager$RaftIoThread)
+[2022-04-11 12:16:53,993] INFO [kafka-raft-outbound-request-thread]: Starting (kafka.raft.RaftSendThread)
+[2022-04-11 12:16:53,993] INFO Starting controller (kafka.server.ControllerServer)
+[2022-04-11 12:16:54,760] INFO Updated connection-accept-rate max connection creation rate to 2147483647 (kafka.network.ConnectionQuotas)
+[2022-04-11 12:16:54,769] INFO Awaiting socket connections on 0.0.0.0:9093. (kafka.network.Acceptor)
+[2022-04-11 12:16:54,971] INFO [SocketServer listenerType=CONTROLLER, nodeId=1] Created data-plane acceptor and processors for endpoint : ListenerName(CONTROLLER) (kafka.network.SocketServer)
+[2022-04-11 12:16:55,069] INFO [RaftManager nodeId=1] Registered the listener org.apache.kafka.controller.QuorumController$QuorumMetaLogListener@14760762 (org.apache.kafka.raft.KafkaRaftClient)
+[2022-04-11 12:16:55,091] INFO [ThrottledChannelReaper-Fetch]: Starting (kafka.server.ClientQuotaManager$ThrottledChannelReaper)
+[2022-04-11 12:16:55,091] INFO [ThrottledChannelReaper-Produce]: Starting (kafka.server.ClientQuotaManager$ThrottledChannelReaper)
+[2022-04-11 12:16:55,098] INFO [ThrottledChannelReaper-Request]: Starting (kafka.server.ClientQuotaManager$ThrottledChannelReaper)
+[2022-04-11 12:16:55,099] INFO [ThrottledChannelReaper-ControllerMutation]: Starting (kafka.server.ClientQuotaManager$ThrottledChannelReaper)
+[2022-04-11 12:16:55,136] INFO [Controller 1] Becoming the active controller at epoch 1, committed offset -1 and committed epoch -1. (org.apache.kafka.controller.QuorumController)
+[2022-04-11 12:16:55,150] INFO [ExpirationReaper-1-AlterAcls]: Starting (kafka.server.DelayedOperationPurgatory$ExpiredOperationReaper)
+[2022-04-11 12:16:55,158] INFO [SocketServer listenerType=CONTROLLER, nodeId=1] Starting socket server acceptors and processors (kafka.network.SocketServer)
+[2022-04-11 12:16:55,174] INFO [SocketServer listenerType=CONTROLLER, nodeId=1] Started data-plane acceptor and processor(s) for endpoint : ListenerName(CONTROLLER) (kafka.network.SocketServer)
+[2022-04-11 12:16:55,175] INFO [SocketServer listenerType=CONTROLLER, nodeId=1] Started socket server acceptors and processors (kafka.network.SocketServer)
+[2022-04-11 12:16:55,176] INFO [BrokerServer id=1] Transition from SHUTDOWN to STARTING (kafka.server.BrokerServer)
+[2022-04-11 12:16:55,178] INFO [BrokerServer id=1] Starting broker (kafka.server.BrokerServer)
+[2022-04-11 12:16:55,201] INFO [ThrottledChannelReaper-Fetch]: Starting (kafka.server.ClientQuotaManager$ThrottledChannelReaper)
+[2022-04-11 12:16:55,201] INFO [ThrottledChannelReaper-Produce]: Starting (kafka.server.ClientQuotaManager$ThrottledChannelReaper)
+[2022-04-11 12:16:55,202] INFO [ThrottledChannelReaper-Request]: Starting (kafka.server.ClientQuotaManager$ThrottledChannelReaper)
+[2022-04-11 12:16:55,202] INFO [ThrottledChannelReaper-ControllerMutation]: Starting (kafka.server.ClientQuotaManager$ThrottledChannelReaper)
+[2022-04-11 12:16:55,275] INFO [BrokerToControllerChannelManager broker=1 name=forwarding]: Starting (kafka.server.BrokerToControllerRequestThread)
+[2022-04-11 12:16:55,285] INFO [BrokerToControllerChannelManager broker=1 name=forwarding]: Recorded new controller, from now on will use broker localhost:9093 (id: 1 rack: null) (kafka.server.BrokerToControllerRequestThread)
+[2022-04-11 12:16:55,446] INFO Updated connection-accept-rate max connection creation rate to 2147483647 (kafka.network.ConnectionQuotas)
+[2022-04-11 12:16:55,448] INFO Awaiting socket connections on 0.0.0.0:9092. (kafka.network.Acceptor)
+[2022-04-11 12:16:55,529] INFO [SocketServer listenerType=BROKER, nodeId=1] Created data-plane acceptor and processors for endpoint : ListenerName(PLAINTEXT) (kafka.network.SocketServer)
+[2022-04-11 12:16:55,571] INFO [BrokerToControllerChannelManager broker=1 name=alterIsr]: Starting (kafka.server.BrokerToControllerRequestThread)
+[2022-04-11 12:16:55,572] INFO [BrokerToControllerChannelManager broker=1 name=alterIsr]: Recorded new controller, from now on will use broker localhost:9093 (id: 1 rack: null) (kafka.server.BrokerToControllerRequestThread)
+[2022-04-11 12:16:55,613] INFO [ExpirationReaper-1-Produce]: Starting (kafka.server.DelayedOperationPurgatory$ExpiredOperationReaper)
+[2022-04-11 12:16:55,616] INFO [ExpirationReaper-1-Fetch]: Starting (kafka.server.DelayedOperationPurgatory$ExpiredOperationReaper)
+[2022-04-11 12:16:55,628] INFO [ExpirationReaper-1-DeleteRecords]: Starting (kafka.server.DelayedOperationPurgatory$ExpiredOperationReaper)
+[2022-04-11 12:16:55,628] INFO [ExpirationReaper-1-ElectLeader]: Starting (kafka.server.DelayedOperationPurgatory$ExpiredOperationReaper)
+[2022-04-11 12:16:55,689] INFO [ExpirationReaper-1-Heartbeat]: Starting (kafka.server.DelayedOperationPurgatory$ExpiredOperationReaper)
+[2022-04-11 12:16:55,690] INFO [ExpirationReaper-1-Rebalance]: Starting (kafka.server.DelayedOperationPurgatory$ExpiredOperationReaper)
+[2022-04-11 12:16:55,812] INFO [RaftManager nodeId=1] Registered the listener kafka.server.metadata.BrokerMetadataListener@476903963 (org.apache.kafka.raft.KafkaRaftClient)
+[2022-04-11 12:16:55,815] INFO [BrokerToControllerChannelManager broker=1 name=heartbeat]: Starting (kafka.server.BrokerToControllerRequestThread)
+[2022-04-11 12:16:55,815] INFO [BrokerToControllerChannelManager broker=1 name=heartbeat]: Recorded new controller, from now on will use broker localhost:9093 (id: 1 rack: null) (kafka.server.BrokerToControllerRequestThread)
+[2022-04-11 12:16:55,816] INFO [BrokerLifecycleManager id=1] Incarnation UKKNVq80SIyYs7ZeXMutTg of broker 1 in cluster OkMGxsukSxqavGUHoRF4wg is now STARTING. (kafka.server.BrokerLifecycleManager)
+[2022-04-11 12:16:55,952] INFO [ExpirationReaper-1-AlterAcls]: Starting (kafka.server.DelayedOperationPurgatory$ExpiredOperationReaper)
+[2022-04-11 12:16:56,200] INFO [Controller 1] Registered new broker: RegisterBrokerRecord(brokerId=1, incarnationId=UKKNVq80SIyYs7ZeXMutTg, brokerEpoch=0, endPoints=[BrokerEndpoint(name='PLAINTEXT', host='localhost', port=9092, securityProtocol=0)], features=[], rack=null, fenced=true) (org.apache.kafka.controller.ClusterControlManager)
+[2022-04-11 12:16:56,229] INFO [BrokerLifecycleManager id=1] Successfully registered broker 1 with broker epoch 0 (kafka.server.BrokerLifecycleManager)
+[2022-04-11 12:16:56,241] INFO [BrokerLifecycleManager id=1] The broker has caught up. Transitioning from STARTING to RECOVERY. (kafka.server.BrokerLifecycleManager)
+[2022-04-11 12:16:56,244] INFO [BrokerMetadataListener id=1] Starting to publish metadata events at offset 1. (kafka.server.metadata.BrokerMetadataListener)
+[2022-04-11 12:16:56,248] INFO [BrokerMetadataPublisher id=1] Publishing initial metadata at offset OffsetAndEpoch(offset=1, epoch=1). (kafka.server.metadata.BrokerMetadataPublisher)
+[2022-04-11 12:16:56,257] INFO Loading logs from log dirs ArraySeq(/tmp/kraft-combined-logs) (kafka.log.LogManager)
+[2022-04-11 12:16:56,264] INFO [BrokerLifecycleManager id=1] The broker is in RECOVERY. (kafka.server.BrokerLifecycleManager)
+[2022-04-11 12:16:56,267] INFO Attempting recovery for all logs in /tmp/kraft-combined-logs since no clean shutdown file was found (kafka.log.LogManager)
+[2022-04-11 12:16:56,286] INFO Loaded 0 logs in 28ms. (kafka.log.LogManager)
+[2022-04-11 12:16:56,287] INFO Starting log cleanup with a period of 300000 ms. (kafka.log.LogManager)
+[2022-04-11 12:16:56,293] INFO Starting log flusher with a default period of 9223372036854775807 ms. (kafka.log.LogManager)
+[2022-04-11 12:16:57,400] INFO [GroupCoordinator 1]: Starting up. (kafka.coordinator.group.GroupCoordinator)
+[2022-04-11 12:16:57,404] INFO [LogDirFailureHandler]: Starting (kafka.server.ReplicaManager$LogDirFailureHandler)
+[2022-04-11 12:16:57,409] INFO [GroupCoordinator 1]: Startup complete. (kafka.coordinator.group.GroupCoordinator)
+[2022-04-11 12:16:57,411] INFO [TransactionCoordinator id=1] Starting up. (kafka.coordinator.transaction.TransactionCoordinator)
+[2022-04-11 12:16:57,417] INFO [TransactionCoordinator id=1] Startup complete. (kafka.coordinator.transaction.TransactionCoordinator)
+[2022-04-11 12:16:57,419] INFO [Transaction Marker Channel Manager 1]: Starting (kafka.coordinator.transaction.TransactionMarkerChannelManager)
+[2022-04-11 12:16:57,441] INFO KafkaConfig values: 
+        advertised.listeners = PLAINTEXT://localhost:9092
+        alter.config.policy.class.name = null
+        alter.log.dirs.replication.quota.window.num = 11
+        alter.log.dirs.replication.quota.window.size.seconds = 1
+        authorizer.class.name = 
+        auto.create.topics.enable = true
+        auto.leader.rebalance.enable = true
+        background.threads = 10
+        broker.heartbeat.interval.ms = 2000
+        broker.id = 1
+        broker.id.generation.enable = true
+        broker.rack = null
+        broker.session.timeout.ms = 9000
+        client.quota.callback.class = null
+        compression.type = producer
+        connection.failed.authentication.delay.ms = 100
+        connections.max.idle.ms = 600000
+        connections.max.reauth.ms = 0
+        control.plane.listener.name = null
+        controlled.shutdown.enable = true
+        controlled.shutdown.max.retries = 3
+        controlled.shutdown.retry.backoff.ms = 5000
+        controller.listener.names = CONTROLLER
+        controller.quorum.append.linger.ms = 25
+        controller.quorum.election.backoff.max.ms = 1000
+        controller.quorum.election.timeout.ms = 1000
+        controller.quorum.fetch.timeout.ms = 2000
+        controller.quorum.request.timeout.ms = 2000
+        controller.quorum.retry.backoff.ms = 20
+        controller.quorum.voters = [1@localhost:9093]
+        controller.quota.window.num = 11
+        controller.quota.window.size.seconds = 1
+        controller.socket.timeout.ms = 30000
+        create.topic.policy.class.name = null
+        default.replication.factor = 1
+        delegation.token.expiry.check.interval.ms = 3600000
+        delegation.token.expiry.time.ms = 86400000
+        delegation.token.master.key = null
+        delegation.token.max.lifetime.ms = 604800000
+        delegation.token.secret.key = null
+        delete.records.purgatory.purge.interval.requests = 1
+        delete.topic.enable = true
+        fetch.max.bytes = 57671680
+        fetch.purgatory.purge.interval.requests = 1000
+        group.initial.rebalance.delay.ms = 3000
+        group.max.session.timeout.ms = 1800000
+        group.max.size = 2147483647
+        group.min.session.timeout.ms = 6000
+        initial.broker.registration.timeout.ms = 60000
+        inter.broker.listener.name = PLAINTEXT
+        inter.broker.protocol.version = 3.1-IV0
+        kafka.metrics.polling.interval.secs = 10
+        kafka.metrics.reporters = []
+        leader.imbalance.check.interval.seconds = 300
+        leader.imbalance.per.broker.percentage = 10
+        listener.security.protocol.map = CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL
+        listeners = PLAINTEXT://:9092,CONTROLLER://:9093
+        log.cleaner.backoff.ms = 15000
+        log.cleaner.dedupe.buffer.size = 134217728
+        log.cleaner.delete.retention.ms = 86400000
+        log.cleaner.enable = true
+        log.cleaner.io.buffer.load.factor = 0.9
+        log.cleaner.io.buffer.size = 524288
+        log.cleaner.io.max.bytes.per.second = 1.7976931348623157E308
+        log.cleaner.max.compaction.lag.ms = 9223372036854775807
+        log.cleaner.min.cleanable.ratio = 0.5
+        log.cleaner.min.compaction.lag.ms = 0
+        log.cleaner.threads = 1
+        log.cleanup.policy = [delete]
+        log.dir = /tmp/kafka-logs
+        log.dirs = /tmp/kraft-combined-logs
+        log.flush.interval.messages = 9223372036854775807
+        log.flush.interval.ms = null
+        log.flush.offset.checkpoint.interval.ms = 60000
+        log.flush.scheduler.interval.ms = 9223372036854775807
+        log.flush.start.offset.checkpoint.interval.ms = 60000
+        log.index.interval.bytes = 4096
+        log.index.size.max.bytes = 10485760
+        log.message.downconversion.enable = true
+        log.message.format.version = 3.0-IV1
+        log.message.timestamp.difference.max.ms = 9223372036854775807
+        log.message.timestamp.type = CreateTime
+        log.preallocate = false
+        log.retention.bytes = -1
+        log.retention.check.interval.ms = 300000
+        log.retention.hours = 168
+        log.retention.minutes = null
+        log.retention.ms = null
+        log.roll.hours = 168
+        log.roll.jitter.hours = 0
+        log.roll.jitter.ms = null
+        log.roll.ms = null
+        log.segment.bytes = 1073741824
+        log.segment.delete.delay.ms = 60000
+        max.connection.creation.rate = 2147483647
+        max.connections = 2147483647
+        max.connections.per.ip = 2147483647
+        max.connections.per.ip.overrides = 
+        max.incremental.fetch.session.cache.slots = 1000
+        message.max.bytes = 1048588
+        metadata.log.dir = null
+        metadata.log.max.record.bytes.between.snapshots = 20971520
+        metadata.log.segment.bytes = 1073741824
+        metadata.log.segment.min.bytes = 8388608
+        metadata.log.segment.ms = 604800000
+        metadata.max.retention.bytes = -1
+        metadata.max.retention.ms = 604800000
+        metric.reporters = []
+        metrics.num.samples = 2
+        metrics.recording.level = INFO
+        metrics.sample.window.ms = 30000
+        min.insync.replicas = 1
+        node.id = 1
+        num.io.threads = 8
+        num.network.threads = 3
+        num.partitions = 1
+        num.recovery.threads.per.data.dir = 1
+        num.replica.alter.log.dirs.threads = null
+        num.replica.fetchers = 1
+        offset.metadata.max.bytes = 4096
+        offsets.commit.required.acks = -1
+        offsets.commit.timeout.ms = 5000
+        offsets.load.buffer.size = 5242880
+        offsets.retention.check.interval.ms = 600000
+        offsets.retention.minutes = 10080
+        offsets.topic.compression.codec = 0
+        offsets.topic.num.partitions = 50
+        offsets.topic.replication.factor = 1
+        offsets.topic.segment.bytes = 104857600
+        password.encoder.cipher.algorithm = AES/CBC/PKCS5Padding
+        password.encoder.iterations = 4096
+        password.encoder.key.length = 128
+        password.encoder.keyfactory.algorithm = null
+        password.encoder.old.secret = null
+        password.encoder.secret = null
+        principal.builder.class = class org.apache.kafka.common.security.authenticator.DefaultKafkaPrincipalBuilder
+        process.roles = [broker, controller]
+        producer.purgatory.purge.interval.requests = 1000
+        queued.max.request.bytes = -1
+        queued.max.requests = 500
+        quota.window.num = 11
+        quota.window.size.seconds = 1
+        remote.log.index.file.cache.total.size.bytes = 1073741824
+        remote.log.manager.task.interval.ms = 30000
+        remote.log.manager.task.retry.backoff.max.ms = 30000
+        remote.log.manager.task.retry.backoff.ms = 500
+        remote.log.manager.task.retry.jitter = 0.2
+        remote.log.manager.thread.pool.size = 10
+        remote.log.metadata.manager.class.name = null
+        remote.log.metadata.manager.class.path = null
+        remote.log.metadata.manager.impl.prefix = null
+        remote.log.metadata.manager.listener.name = null
+        remote.log.reader.max.pending.tasks = 100
+        remote.log.reader.threads = 10
+        remote.log.storage.manager.class.name = null
+        remote.log.storage.manager.class.path = null
+        remote.log.storage.manager.impl.prefix = null
+        remote.log.storage.system.enable = false
+        replica.fetch.backoff.ms = 1000
+        replica.fetch.max.bytes = 1048576
+        replica.fetch.min.bytes = 1
+        replica.fetch.response.max.bytes = 10485760
+        replica.fetch.wait.max.ms = 500
+        replica.high.watermark.checkpoint.interval.ms = 5000
+        replica.lag.time.max.ms = 30000
+        replica.selector.class = null
+        replica.socket.receive.buffer.bytes = 65536
+        replica.socket.timeout.ms = 30000
+        replication.quota.window.num = 11
+        replication.quota.window.size.seconds = 1
+        request.timeout.ms = 30000
+        reserved.broker.max.id = 1000
+        sasl.client.callback.handler.class = null
+        sasl.enabled.mechanisms = [GSSAPI]
+        sasl.jaas.config = null
+        sasl.kerberos.kinit.cmd = /usr/bin/kinit
+        sasl.kerberos.min.time.before.relogin = 60000
+        sasl.kerberos.principal.to.local.rules = [DEFAULT]
+        sasl.kerberos.service.name = null
+        sasl.kerberos.ticket.renew.jitter = 0.05
+        sasl.kerberos.ticket.renew.window.factor = 0.8
+        sasl.login.callback.handler.class = null
+        sasl.login.class = null
+        sasl.login.connect.timeout.ms = null
+        sasl.login.read.timeout.ms = null
+        sasl.login.refresh.buffer.seconds = 300
+        sasl.login.refresh.min.period.seconds = 60
+        sasl.login.refresh.window.factor = 0.8
+        sasl.login.refresh.window.jitter = 0.05
+        sasl.login.retry.backoff.max.ms = 10000
+        sasl.login.retry.backoff.ms = 100
+        sasl.mechanism.controller.protocol = GSSAPI
+        sasl.mechanism.inter.broker.protocol = GSSAPI
+        sasl.oauthbearer.clock.skew.seconds = 30
+        sasl.oauthbearer.expected.audience = null
+        sasl.oauthbearer.expected.issuer = null
+        sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+        sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+        sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+        sasl.oauthbearer.jwks.endpoint.url = null
+        sasl.oauthbearer.scope.claim.name = scope
+        sasl.oauthbearer.sub.claim.name = sub
+        sasl.oauthbearer.token.endpoint.url = null
+        sasl.server.callback.handler.class = null
+        security.inter.broker.protocol = PLAINTEXT
+        security.providers = null
+        socket.connection.setup.timeout.max.ms = 30000
+        socket.connection.setup.timeout.ms = 10000
+        socket.receive.buffer.bytes = 102400
+        socket.request.max.bytes = 104857600
+        socket.send.buffer.bytes = 102400
+        ssl.cipher.suites = []
+        ssl.client.auth = none
+        ssl.enabled.protocols = [TLSv1.2]
+        ssl.endpoint.identification.algorithm = https
+        ssl.engine.factory.class = null
+        ssl.key.password = null
+        ssl.keymanager.algorithm = SunX509
+        ssl.keystore.certificate.chain = null
+        ssl.keystore.key = null
+        ssl.keystore.location = null
+        ssl.keystore.password = null
+        ssl.keystore.type = JKS
+        ssl.principal.mapping.rules = DEFAULT
+        ssl.protocol = TLSv1.2
+        ssl.provider = null
+        ssl.secure.random.implementation = null
+        ssl.trustmanager.algorithm = PKIX
+        ssl.truststore.certificates = null
+        ssl.truststore.location = null
+        ssl.truststore.password = null
+        ssl.truststore.type = JKS
+        transaction.abort.timed.out.transaction.cleanup.interval.ms = 10000
+        transaction.max.timeout.ms = 900000
+        transaction.remove.expired.transaction.cleanup.interval.ms = 3600000
+        transaction.state.log.load.buffer.size = 5242880
+        transaction.state.log.min.isr = 1
+        transaction.state.log.num.partitions = 50
+        transaction.state.log.replication.factor = 1
+        transaction.state.log.segment.bytes = 104857600
+        transactional.id.expiration.ms = 604800000
+        unclean.leader.election.enable = false
+        zookeeper.clientCnxnSocket = null
+        zookeeper.connect = null
+        zookeeper.connection.timeout.ms = null
+        zookeeper.max.in.flight.requests = 10
+        zookeeper.session.timeout.ms = 18000
+        zookeeper.set.acl = false
+        zookeeper.ssl.cipher.suites = null
+        zookeeper.ssl.client.enable = false
+        zookeeper.ssl.crl.enable = false
+        zookeeper.ssl.enabled.protocols = null
+        zookeeper.ssl.endpoint.identification.algorithm = HTTPS
+        zookeeper.ssl.keystore.location = null
+        zookeeper.ssl.keystore.password = null
+        zookeeper.ssl.keystore.type = null
+        zookeeper.ssl.ocsp.enable = false
+        zookeeper.ssl.protocol = TLSv1.2
+        zookeeper.ssl.truststore.location = null
+        zookeeper.ssl.truststore.password = null
+        zookeeper.ssl.truststore.type = null
+        zookeeper.sync.time.ms = 2000
+ (kafka.server.KafkaConfig)
+[2022-04-11 12:16:57,471] INFO [SocketServer listenerType=BROKER, nodeId=1] Starting socket server acceptors and processors (kafka.network.SocketServer)
+[2022-04-11 12:16:57,500] INFO [SocketServer listenerType=BROKER, nodeId=1] Started data-plane acceptor and processor(s) for endpoint : ListenerName(PLAINTEXT) (kafka.network.SocketServer)
+[2022-04-11 12:16:57,500] INFO [SocketServer listenerType=BROKER, nodeId=1] Started socket server acceptors and processors (kafka.network.SocketServer)
+[2022-04-11 12:16:57,502] INFO [BrokerServer id=1] Transition from STARTING to STARTED (kafka.server.BrokerServer)
+[2022-04-11 12:16:57,504] INFO Kafka version: 3.1.0 (org.apache.kafka.common.utils.AppInfoParser)
+[2022-04-11 12:16:57,504] INFO Kafka commitId: 37edeed0777bacb3 (org.apache.kafka.common.utils.AppInfoParser)
+[2022-04-11 12:16:57,504] INFO Kafka startTimeMs: 1649672217502 (org.apache.kafka.common.utils.AppInfoParser)
+[2022-04-11 12:16:57,505] INFO [Controller 1] The request from broker 1 to unfence has been granted because it has caught up with the last committed metadata offset 1. (org.apache.kafka.controller.BrokerHeartbeatManager)
+[2022-04-11 12:16:57,507] INFO Kafka Server started (kafka.server.KafkaRaftServer)
+[2022-04-11 12:16:57,520] INFO [Controller 1] Unfenced broker: UnfenceBrokerRecord(id=1, epoch=0) (org.apache.kafka.controller.ClusterControlManager)
+[2022-04-11 12:16:57,554] INFO [BrokerLifecycleManager id=1] The broker has been unfenced. Transitioning from RECOVERY to RUNNING. (kafka.server.BrokerLifecycleManager)
