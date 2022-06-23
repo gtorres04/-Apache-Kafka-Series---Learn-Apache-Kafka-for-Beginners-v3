@@ -2982,8 +2982,17 @@ Una cosa que hemos estado dando por sentado son los offsets de los consumidores.
 
 * Los offsets se confirman cuando se llama `.poll()` y cuando han transcurrido los milisegundos configurados en `auto.commit.interval.ms`. Por ejemplo: `auto.commit.interval.ms=5000` y `enable.auto.commit=true` entonces se confirmara cada 5 segundos.
 
+# 55. Real World Project Overview
 
+Recursos:
+1. Wikimedia Recent Change Stream: https://stream.wikimedia.org/v2/stream/recentchange
+2. Demo 1: https://codepen.io/Krinkle/pen/BwEKgW?editors=1010
+3. Demo 2: https://esjewett.github.io/wm-eventsource-demo/
 
+# 56. Real World Exercise - Solution
+reference: https://www.conduktor.io/apache-kafka-for-beginners
+
+Repositorio con la solucion hecha por conduktor: https://github.com/conduktor/kafka-beginners-course
 
 
 
