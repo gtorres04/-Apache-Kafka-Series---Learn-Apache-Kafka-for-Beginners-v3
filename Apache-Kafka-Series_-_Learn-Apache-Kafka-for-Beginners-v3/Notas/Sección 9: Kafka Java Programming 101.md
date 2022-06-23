@@ -1916,4 +1916,1066 @@ se va entonces no cambie las asignaciones. Entonces, la razon por la que primero
 
 Pero si especifica un ID de instancia de grupo como parte de la configuracion del consumidor, entonces convierte al consumidor en un miembro estatico y debe averiguar que desea poner en esta configuracion. Pero lo que pasa es que si, por ejemplo, tienes 3 consumidores con ID diferentes, si un consumidor sale del grupo la particion no se reasignara a otro consumidor y esta particion esperara al consumidor que se reconecte, el tiempo de espera de la particion la determinara el parametro session.timeout.ms.
 
-************************** 51. Java Consumer Incremental Cooperative Rebalance - Practice **************************
+## 51. Java Consumer Incremental Cooperative Rebalance - Practice 
+
+* Se crea un topico llamado demo_java
+
+```
+gerlinorlandotorres@MacBook-Pro-de-Gerlin kafka-stack-docker-compose % kafka-topics --bootstrap-server localhost:9092 --topic demo_java --create --partitions 3 --replication-factor 2
+WARNING: Due to limitations in metric names, topics with a period ('.') or underscore ('_') could collide. To avoid issues it is best to use either, but not both.
+Created topic demo_java.
+gerlinorlandotorres@MacBook-Pro-de-Gerlin kafka-stack-docker-compose % kafka-topics --bootstrap-server localhost:9092 --topic demo_java --describe                                    
+Topic: demo_java        TopicId: EV3ubJdsSyiw2e0S1ClvBQ PartitionCount: 3       ReplicationFactor: 2    Configs: 
+        Topic: demo_java        Partition: 0    Leader: 2       Replicas: 2,1   Isr: 2,1
+        Topic: demo_java        Partition: 1    Leader: 3       Replicas: 3,2   Isr: 3,2
+        Topic: demo_java        Partition: 2    Leader: 1       Replicas: 1,3   Isr: 1,3
+```
+* Se ejecuta un consumidor con las siguientes caracteristicas (ConsumerDemoCooperative.java)
+```
+package io.conduktor.demos.kafka;
+
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetResetStrategy;
+import org.apache.kafka.common.errors.WakeupException;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.time.Duration;
+import java.util.Collections;
+import java.util.Properties;
+
+import static org.apache.kafka.clients.consumer.ConsumerConfig.*;
+
+public class ConsumerDemoCooperative {
+
+    private static final Logger log = LoggerFactory.getLogger(ConsumerDemoCooperative.class.getSimpleName());
+
+    public static void main(String[] args) {
+        log.info("I am a Kafka Consumer");
+
+        // Crear las propiedades del consumidor
+        Properties properties = new Properties();
+        properties.setProperty(BOOTSTRAP_SERVERS_CONFIG, "127.0.0.1:9092"); // IP y PUERTO del servidor de Kafka
+        properties.setProperty(KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName()); // Deserializador de la clave del mensaje a recibir
+        properties.setProperty(VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName()); // Deserializador del valor del mensaje a recibir
+        properties.setProperty(GROUP_ID_CONFIG, "my-third-application"); // ID del grupo al que pertenecera el consumidor
+        properties.setProperty(AUTO_OFFSET_RESET_CONFIG, OffsetResetStrategy.EARLIEST.name().toLowerCase()); // Desde donde iniciara la lectura de los mensajes en base al offset
+
+        // Crear el consumidor
+        KafkaConsumer<String, String> consumer = new KafkaConsumer<>(properties);
+
+        // obtengo una referencia al hilo de ejecucion actual
+        final Thread mainThread = Thread.currentThread();
+
+        // Adicionando el hook de apagado
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            log.info("Detectado un apagado, salgamos mediante el llamado a concumer.wakerup()...");
+            consumer.wakeup();
+
+            // Unir el hilo principal para permitir la ejecucion de el codigo en el hilo principal
+            try {
+                mainThread.join();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }));
+
+        try {
+            // Subscribir el consumidor a nuestro topico
+            consumer.subscribe(Collections.singleton("demo_java"));
+
+            // Sondear para obtener nuevos datos
+            while (true) {
+                ConsumerRecords<String, String> consumerRecords = consumer.poll(Duration.ofMillis(100));
+                consumerRecords.forEach(consumerRecord -> log.info("Key: {}\n" +
+                        "Value: {}\n" +
+                        "Partition: {}\n" +
+                        "Offset: {}", consumerRecord.key(), consumerRecord.value(), consumerRecord.partition(), consumerRecord.offset()));
+            }
+        } catch (WakeupException wakeupException) {
+            log.info("Wake up exception!");
+            // Ignoramos esto por lo que es una exception esperada cuando se cierra un consumidor
+        } catch (Exception exception) {
+            log.error("Error inesperado: {}", exception.toString());
+        } finally {
+            consumer.close(); // Esto ademas confirmara los offsets si es necesario
+            log.info("El consumidor esta ahora elegantemente cerrado");
+        }
+    }
+}
+
+```
+Resultado de la ejecucion
+```
+12:11:21: Executing ':kafka-basics:ConsumerDemoCooperative.main()'...
+
+> Task :kafka-basics:compileJava UP-TO-DATE
+> Task :kafka-basics:processResources NO-SOURCE
+> Task :kafka-basics:classes UP-TO-DATE
+
+> Task :kafka-basics:ConsumerDemoCooperative.main()
+[main] INFO ConsumerDemoCooperative - I am a Kafka Consumer
+[main] INFO org.apache.kafka.clients.consumer.ConsumerConfig - ConsumerConfig values: 
+	allow.auto.create.topics = true
+	auto.commit.interval.ms = 5000
+	auto.offset.reset = earliest
+	bootstrap.servers = [127.0.0.1:9092]
+	check.crcs = true
+	client.dns.lookup = use_all_dns_ips
+	client.id = consumer-my-third-application-1
+	client.rack = 
+	connections.max.idle.ms = 540000
+	default.api.timeout.ms = 60000
+	enable.auto.commit = true
+	exclude.internal.topics = true
+	fetch.max.bytes = 52428800
+	fetch.max.wait.ms = 500
+	fetch.min.bytes = 1
+	group.id = my-third-application
+	group.instance.id = null
+	heartbeat.interval.ms = 3000
+	interceptor.classes = []
+	internal.leave.group.on.close = true
+	internal.throw.on.fetch.stable.offset.unsupported = false
+	isolation.level = read_uncommitted
+	key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+	max.partition.fetch.bytes = 1048576
+	max.poll.interval.ms = 300000
+	max.poll.records = 500
+	metadata.max.age.ms = 300000
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partition.assignment.strategy = [class org.apache.kafka.clients.consumer.RangeAssignor, class org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	session.timeout.ms = 45000
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	value.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version: 3.1.0
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId: 37edeed0777bacb3
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka startTimeMs: 1655979082452
+[main] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Subscribed to topic(s): demo_java
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-0 to 0 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-1 to 0 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-2 to 0 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Cluster ID: haCR281HQJa46xeRJyL1cg
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Discovered group coordinator 127.0.0.1:9094 (id: 2147483644 rack: null)
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: need to re-join with the given member-id
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=1, memberId='consumer-my-third-application-1-c54e0465-d146-4c18-80d5-b9a67c787c24', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Finished assignment for group at generation 1: {consumer-my-third-application-1-c54e0465-d146-4c18-80d5-b9a67c787c24=Assignment(partitions=[demo_java-0, demo_java-1, demo_java-2])}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=1, memberId='consumer-my-third-application-1-c54e0465-d146-4c18-80d5-b9a67c787c24', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-0, demo_java-1, demo_java-2])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-0, demo_java-1, demo_java-2
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Found no committed offset for partition demo_java-0
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Found no committed offset for partition demo_java-1
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Found no committed offset for partition demo_java-2
+[main] INFO org.apache.kafka.clients.consumer.internals.SubscriptionState - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting offset for partition demo_java-0 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9093 (id: 2 rack: null)], epoch=0}}.
+[main] INFO org.apache.kafka.clients.consumer.internals.SubscriptionState - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting offset for partition demo_java-1 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9094 (id: 3 rack: null)], epoch=0}}.
+[main] INFO org.apache.kafka.clients.consumer.internals.SubscriptionState - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting offset for partition demo_java-2 to position FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 1 rack: null)], epoch=0}}.
+```
+Se asignan las tres particiones del topico a este consumidor
+```
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-0, demo_java-1, demo_java-2])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-0, demo_java-1, demo_java-2
+```
+* Se ejecuta un segundo consumidor con las caracteristicas del anterior (ConsumerDemoCooperative.java), teniendo como resultado al ejeuctarlo
+```
+12:21:57: Executing ':kafka-basics:ConsumerDemoCooperative.main()'...
+
+Starting Gradle Daemon...
+Gradle Daemon started in 927 ms
+> Task :kafka-basics:compileJava UP-TO-DATE
+> Task :kafka-basics:processResources NO-SOURCE
+> Task :kafka-basics:classes UP-TO-DATE
+
+> Task :kafka-basics:ConsumerDemoCooperative.main()
+[main] INFO ConsumerDemoCooperative - I am a Kafka Consumer
+[main] INFO org.apache.kafka.clients.consumer.ConsumerConfig - ConsumerConfig values: 
+	allow.auto.create.topics = true
+	auto.commit.interval.ms = 5000
+	auto.offset.reset = earliest
+	bootstrap.servers = [127.0.0.1:9092]
+	check.crcs = true
+	client.dns.lookup = use_all_dns_ips
+	client.id = consumer-my-third-application-1
+	client.rack = 
+	connections.max.idle.ms = 540000
+	default.api.timeout.ms = 60000
+	enable.auto.commit = true
+	exclude.internal.topics = true
+	fetch.max.bytes = 52428800
+	fetch.max.wait.ms = 500
+	fetch.min.bytes = 1
+	group.id = my-third-application
+	group.instance.id = null
+	heartbeat.interval.ms = 3000
+	interceptor.classes = []
+	internal.leave.group.on.close = true
+	internal.throw.on.fetch.stable.offset.unsupported = false
+	isolation.level = read_uncommitted
+	key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+	max.partition.fetch.bytes = 1048576
+	max.poll.interval.ms = 300000
+	max.poll.records = 500
+	metadata.max.age.ms = 300000
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partition.assignment.strategy = [class org.apache.kafka.clients.consumer.RangeAssignor, class org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	session.timeout.ms = 45000
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	value.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version: 3.1.0
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId: 37edeed0777bacb3
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka startTimeMs: 1655979723132
+[main] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Subscribed to topic(s): demo_java
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-0 to 0 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-1 to 0 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-2 to 0 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Cluster ID: haCR281HQJa46xeRJyL1cg
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Discovered group coordinator 127.0.0.1:9094 (id: 2147483644 rack: null)
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: need to re-join with the given member-id
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=2, memberId='consumer-my-third-application-1-67e1e1b3-d1aa-4833-9a0f-8a9f917f38a0', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=2, memberId='consumer-my-third-application-1-67e1e1b3-d1aa-4833-9a0f-8a9f917f38a0', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-0, demo_java-1])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-0, demo_java-1
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Setting offset for partition demo_java-0 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9093 (id: 2 rack: null)], epoch=0}}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Setting offset for partition demo_java-1 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9094 (id: 3 rack: null)], epoch=0}}
+```
+A este segundo consumidor se le asignan 2 particiones de las 3 que tenia anteriormente:
+```
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-0, demo_java-1])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-0, demo_java-1
+```
+Revisemos que paso con el primer consumidor
+```
+[main] INFO org.apache.kafka.clients.NetworkClient - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Node -1 disconnected.
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: group is already rebalancing
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Revoke previously assigned partitions demo_java-0, demo_java-1, demo_java-2
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=2, memberId='consumer-my-third-application-1-c54e0465-d146-4c18-80d5-b9a67c787c24', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Finished assignment for group at generation 2: {consumer-my-third-application-1-67e1e1b3-d1aa-4833-9a0f-8a9f917f38a0=Assignment(partitions=[demo_java-0, demo_java-1]), consumer-my-third-application-1-c54e0465-d146-4c18-80d5-b9a67c787c24=Assignment(partitions=[demo_java-2])}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=2, memberId='consumer-my-third-application-1-c54e0465-d146-4c18-80d5-b9a67c787c24', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-2])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-2
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Setting offset for partition demo_java-2 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 1 rack: null)], epoch=0}}
+```
+El primer consumidor quedo con una sola particion tal y como lo muestran las lineas
+```
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Finished assignment for group at generation 2: {consumer-my-third-application-1-67e1e1b3-d1aa-4833-9a0f-8a9f917f38a0=Assignment(partitions=[demo_java-0, demo_java-1]), consumer-my-third-application-1-c54e0465-d146-4c18-80d5-b9a67c787c24=Assignment(partitions=[demo_java-2])}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=2, memberId='consumer-my-third-application-1-c54e0465-d146-4c18-80d5-b9a67c787c24', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-2])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-2
+```
+* Ejecutemos un tercer consumidor
+
+```
+12:37:38: Executing ':kafka-basics:ConsumerDemoCooperative.main()'...
+
+Starting Gradle Daemon...
+Gradle Daemon started in 924 ms
+> Task :kafka-basics:compileJava UP-TO-DATE
+> Task :kafka-basics:processResources NO-SOURCE
+> Task :kafka-basics:classes UP-TO-DATE
+
+> Task :kafka-basics:ConsumerDemoCooperative.main()
+[main] INFO ConsumerDemoCooperative - I am a Kafka Consumer
+[main] INFO org.apache.kafka.clients.consumer.ConsumerConfig - ConsumerConfig values: 
+	allow.auto.create.topics = true
+	auto.commit.interval.ms = 5000
+	auto.offset.reset = earliest
+	bootstrap.servers = [127.0.0.1:9092]
+	check.crcs = true
+	client.dns.lookup = use_all_dns_ips
+	client.id = consumer-my-third-application-1
+	client.rack = 
+	connections.max.idle.ms = 540000
+	default.api.timeout.ms = 60000
+	enable.auto.commit = true
+	exclude.internal.topics = true
+	fetch.max.bytes = 52428800
+	fetch.max.wait.ms = 500
+	fetch.min.bytes = 1
+	group.id = my-third-application
+	group.instance.id = null
+	heartbeat.interval.ms = 3000
+	interceptor.classes = []
+	internal.leave.group.on.close = true
+	internal.throw.on.fetch.stable.offset.unsupported = false
+	isolation.level = read_uncommitted
+	key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+	max.partition.fetch.bytes = 1048576
+	max.poll.interval.ms = 300000
+	max.poll.records = 500
+	metadata.max.age.ms = 300000
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partition.assignment.strategy = [class org.apache.kafka.clients.consumer.RangeAssignor, class org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	session.timeout.ms = 45000
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	value.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version: 3.1.0
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId: 37edeed0777bacb3
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka startTimeMs: 1655980663690
+[main] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Subscribed to topic(s): demo_java
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-0 to 1 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-2 to 4 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-1 to 3 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Cluster ID: haCR281HQJa46xeRJyL1cg
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Discovered group coordinator 127.0.0.1:9094 (id: 2147483644 rack: null)
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: need to re-join with the given member-id
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=4, memberId='consumer-my-third-application-1-bd86764e-2b76-4dd0-b809-383e84154c52', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=4, memberId='consumer-my-third-application-1-bd86764e-2b76-4dd0-b809-383e84154c52', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-2])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-2
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Setting offset for partition demo_java-2 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 1 rack: null)], epoch=4}}
+```
+Revisemos que paso con el consumidor 2
+```
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: group is already rebalancing
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Revoke previously assigned partitions demo_java-0, demo_java-1
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=4, memberId='consumer-my-third-application-1-43a8acc5-2315-4400-871b-1a045e7b9829', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=4, memberId='consumer-my-third-application-1-43a8acc5-2315-4400-871b-1a045e7b9829', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-0])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-0
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Setting offset for partition demo_java-0 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9093 (id: 2 rack: null)], epoch=1}}
+```
+El consumidor 2 quedo con una sola particion
+```
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-0])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-0
+```
+
+Revisemos el consumidor 1
+```
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: group is already rebalancing
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Revoke previously assigned partitions demo_java-2
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=4, memberId='consumer-my-third-application-1-523ab3cc-a184-451e-bfa2-595e1f70a2dc', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Finished assignment for group at generation 4: {consumer-my-third-application-1-bd86764e-2b76-4dd0-b809-383e84154c52=Assignment(partitions=[demo_java-2]), consumer-my-third-application-1-523ab3cc-a184-451e-bfa2-595e1f70a2dc=Assignment(partitions=[demo_java-1]), consumer-my-third-application-1-43a8acc5-2315-4400-871b-1a045e7b9829=Assignment(partitions=[demo_java-0])}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=4, memberId='consumer-my-third-application-1-523ab3cc-a184-451e-bfa2-595e1f70a2dc', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-1])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-1
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Setting offset for partition demo_java-1 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9094 (id: 3 rack: null)], epoch=3}}
+```
+El consumidor 1 cambio de tener la particion 2 a tener la 1 en este rebalanceo
+```
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-1])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-1
+```
+CONLUSION DEL REBALANCEO: Efectivamente los consumidores en cada rebalanceo de particiones son afectados, ya que en cada rebalanceo kafka puede que les asigne particiones diferentes a las que tenia anteriormente, y por tanto sucede lo que se conoce DETENER EL MUNDO.
+
+## Solucion al problema (DETENER EL MUNDO)
+
+Anteriormente al ejecutar los consumidores podiamos ver la estrategia de asgnacion (Rebalanceo) a la que obedecian
+Consumidor 1,2 y 3 obedecian a 2 estrategias, dandole prioridad al parecer a la primera (org.apache.kafka.clients.consumer.RangeAssignor)
+```
+...
+partition.assignment.strategy = [class org.apache.kafka.clients.consumer.RangeAssignor, class org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+...
+```
+Lo que vamos hacer es solo dejar esta `org.apache.kafka.clients.consumer.CooperativeStickyAssignor` y revisemos que sucede al ejecutar nuevamente 3 consumidores. Antes que nada debemos agregar una propiedad al consumidor que lo configure obedeciendo a solo dicha estrategia
+```
+properties.setProperty(PARTITION_ASSIGNMENT_STRATEGY_CONFIG, CooperativeStickyAssignor.class.getName()); // Especifica solo una estrategia de asignacion o rebalanceo
+```
+Ejecutemos el consumidor 1
+```
+13:00:34: Executing ':kafka-basics:ConsumerDemoCooperative.main()'...
+
+> Task :kafka-basics:compileJava
+> Task :kafka-basics:processResources NO-SOURCE
+> Task :kafka-basics:classes
+
+> Task :kafka-basics:ConsumerDemoCooperative.main()
+[main] INFO ConsumerDemoCooperative - I am a Kafka Consumer
+[main] INFO org.apache.kafka.clients.consumer.ConsumerConfig - ConsumerConfig values: 
+	allow.auto.create.topics = true
+	auto.commit.interval.ms = 5000
+	auto.offset.reset = earliest
+	bootstrap.servers = [127.0.0.1:9092]
+	check.crcs = true
+	client.dns.lookup = use_all_dns_ips
+	client.id = consumer-my-third-application-1
+	client.rack = 
+	connections.max.idle.ms = 540000
+	default.api.timeout.ms = 60000
+	enable.auto.commit = true
+	exclude.internal.topics = true
+	fetch.max.bytes = 52428800
+	fetch.max.wait.ms = 500
+	fetch.min.bytes = 1
+	group.id = my-third-application
+	group.instance.id = null
+	heartbeat.interval.ms = 3000
+	interceptor.classes = []
+	internal.leave.group.on.close = true
+	internal.throw.on.fetch.stable.offset.unsupported = false
+	isolation.level = read_uncommitted
+	key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+	max.partition.fetch.bytes = 1048576
+	max.poll.interval.ms = 300000
+	max.poll.records = 500
+	metadata.max.age.ms = 300000
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partition.assignment.strategy = [org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	session.timeout.ms = 45000
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	value.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version: 3.1.0
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId: 37edeed0777bacb3
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka startTimeMs: 1655982035937
+[main] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Subscribed to topic(s): demo_java
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-0 to 1 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-2 to 4 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-1 to 3 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Cluster ID: haCR281HQJa46xeRJyL1cg
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Discovered group coordinator 127.0.0.1:9094 (id: 2147483644 rack: null)
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: need to re-join with the given member-id
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=8, memberId='consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractStickyAssignor - Final assignment of partitions to consumers: 
+{consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed=[demo_java-0, demo_java-1, demo_java-2]}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Finished assignment for group at generation 8: {consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed=Assignment(partitions=[demo_java-0, demo_java-1, demo_java-2])}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=8, memberId='consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Updating assignment with
+	Assigned partitions:                       [demo_java-0, demo_java-1, demo_java-2]
+	Current owned partitions:                  []
+	Added partitions (assigned - owned):       [demo_java-0, demo_java-1, demo_java-2]
+	Revoked partitions (owned - assigned):     []
+
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-0, demo_java-1, demo_java-2])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-0, demo_java-1, demo_java-2
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Setting offset for partition demo_java-0 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9093 (id: 2 rack: null)], epoch=1}}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Setting offset for partition demo_java-1 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9094 (id: 3 rack: null)], epoch=3}}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Setting offset for partition demo_java-2 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 1 rack: null)], epoch=4}}
+```
+Ejecutemos el consumidor 2:
+```
+13:01:45: Executing ':kafka-basics:ConsumerDemoCooperative.main()'...
+
+Starting Gradle Daemon...
+Gradle Daemon started in 933 ms
+> Task :kafka-basics:compileJava UP-TO-DATE
+> Task :kafka-basics:processResources NO-SOURCE
+> Task :kafka-basics:classes UP-TO-DATE
+
+> Task :kafka-basics:ConsumerDemoCooperative.main()
+[main] INFO ConsumerDemoCooperative - I am a Kafka Consumer
+[main] INFO org.apache.kafka.clients.consumer.ConsumerConfig - ConsumerConfig values: 
+	allow.auto.create.topics = true
+	auto.commit.interval.ms = 5000
+	auto.offset.reset = earliest
+	bootstrap.servers = [127.0.0.1:9092]
+	check.crcs = true
+	client.dns.lookup = use_all_dns_ips
+	client.id = consumer-my-third-application-1
+	client.rack = 
+	connections.max.idle.ms = 540000
+	default.api.timeout.ms = 60000
+	enable.auto.commit = true
+	exclude.internal.topics = true
+	fetch.max.bytes = 52428800
+	fetch.max.wait.ms = 500
+	fetch.min.bytes = 1
+	group.id = my-third-application
+	group.instance.id = null
+	heartbeat.interval.ms = 3000
+	interceptor.classes = []
+	internal.leave.group.on.close = true
+	internal.throw.on.fetch.stable.offset.unsupported = false
+	isolation.level = read_uncommitted
+	key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+	max.partition.fetch.bytes = 1048576
+	max.poll.interval.ms = 300000
+	max.poll.records = 500
+	metadata.max.age.ms = 300000
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partition.assignment.strategy = [org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	session.timeout.ms = 45000
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	value.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version: 3.1.0
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId: 37edeed0777bacb3
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka startTimeMs: 1655982111474
+[main] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Subscribed to topic(s): demo_java
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-0 to 1 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-2 to 4 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-1 to 3 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Cluster ID: haCR281HQJa46xeRJyL1cg
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Discovered group coordinator 127.0.0.1:9094 (id: 2147483644 rack: null)
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: need to re-join with the given member-id
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=9, memberId='consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=9, memberId='consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Updating assignment with
+	Assigned partitions:                       []
+	Current owned partitions:                  []
+	Added partitions (assigned - owned):       []
+	Revoked partitions (owned - assigned):     []
+
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: 
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: group is already rebalancing
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=10, memberId='consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=10, memberId='consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Updating assignment with
+	Assigned partitions:                       [demo_java-2]
+	Current owned partitions:                  []
+	Added partitions (assigned - owned):       [demo_java-2]
+	Revoked partitions (owned - assigned):     []
+
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-2])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-2
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Setting offset for partition demo_java-2 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 1 rack: null)], epoch=4}}
+```
+
+Revisemos el consumidor 1
+```
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: group is already rebalancing
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=9, memberId='consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractStickyAssignor - Final assignment of partitions to consumers: 
+{consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b=[demo_java-2], consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed=[demo_java-0, demo_java-1]}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Finished assignment for group at generation 9: {consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b=Assignment(partitions=[]), consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed=Assignment(partitions=[demo_java-0, demo_java-1])}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=9, memberId='consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Updating assignment with
+	Assigned partitions:                       [demo_java-0, demo_java-1]
+	Current owned partitions:                  [demo_java-0, demo_java-1, demo_java-2]
+	Added partitions (assigned - owned):       []
+	Revoked partitions (owned - assigned):     [demo_java-2]
+
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Revoke previously assigned partitions demo_java-2
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: need to revoke partitions [demo_java-2] as indicated by the current assignment and re-join
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-0, demo_java-1])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: 
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=10, memberId='consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractStickyAssignor - Final assignment of partitions to consumers: 
+{consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b=[demo_java-2], consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed=[demo_java-0, demo_java-1]}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Finished assignment for group at generation 10: {consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b=Assignment(partitions=[demo_java-2]), consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed=Assignment(partitions=[demo_java-0, demo_java-1])}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=10, memberId='consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Updating assignment with
+	Assigned partitions:                       [demo_java-0, demo_java-1]
+	Current owned partitions:                  [demo_java-0, demo_java-1]
+	Added partitions (assigned - owned):       []
+	Revoked partitions (owned - assigned):     []
+
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-0, demo_java-1])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: 
+```
+* Ejecutemos el consumidor 3
+```
+13:03:44: Executing ':kafka-basics:ConsumerDemoCooperative.main()'...
+
+Starting Gradle Daemon...
+Gradle Daemon started in 939 ms
+> Task :kafka-basics:compileJava UP-TO-DATE
+> Task :kafka-basics:processResources NO-SOURCE
+> Task :kafka-basics:classes UP-TO-DATE
+
+> Task :kafka-basics:ConsumerDemoCooperative.main()
+[main] INFO ConsumerDemoCooperative - I am a Kafka Consumer
+[main] INFO org.apache.kafka.clients.consumer.ConsumerConfig - ConsumerConfig values: 
+	allow.auto.create.topics = true
+	auto.commit.interval.ms = 5000
+	auto.offset.reset = earliest
+	bootstrap.servers = [127.0.0.1:9092]
+	check.crcs = true
+	client.dns.lookup = use_all_dns_ips
+	client.id = consumer-my-third-application-1
+	client.rack = 
+	connections.max.idle.ms = 540000
+	default.api.timeout.ms = 60000
+	enable.auto.commit = true
+	exclude.internal.topics = true
+	fetch.max.bytes = 52428800
+	fetch.max.wait.ms = 500
+	fetch.min.bytes = 1
+	group.id = my-third-application
+	group.instance.id = null
+	heartbeat.interval.ms = 3000
+	interceptor.classes = []
+	internal.leave.group.on.close = true
+	internal.throw.on.fetch.stable.offset.unsupported = false
+	isolation.level = read_uncommitted
+	key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+	max.partition.fetch.bytes = 1048576
+	max.poll.interval.ms = 300000
+	max.poll.records = 500
+	metadata.max.age.ms = 300000
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partition.assignment.strategy = [org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	session.timeout.ms = 45000
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	value.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version: 3.1.0
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId: 37edeed0777bacb3
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka startTimeMs: 1655982230296
+[main] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Subscribed to topic(s): demo_java
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-0 to 1 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-2 to 4 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Resetting the last seen epoch of partition demo_java-1 to 3 since the associated topicId changed from null to EV3ubJdsSyiw2e0S1ClvBQ
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Cluster ID: haCR281HQJa46xeRJyL1cg
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Discovered group coordinator 127.0.0.1:9094 (id: 2147483644 rack: null)
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: need to re-join with the given member-id
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=11, memberId='consumer-my-third-application-1-d784761e-7670-4fcb-a546-e64976658bdd', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=11, memberId='consumer-my-third-application-1-d784761e-7670-4fcb-a546-e64976658bdd', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Updating assignment with
+	Assigned partitions:                       []
+	Current owned partitions:                  []
+	Added partitions (assigned - owned):       []
+	Revoked partitions (owned - assigned):     []
+
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: 
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: group is already rebalancing
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=12, memberId='consumer-my-third-application-1-d784761e-7670-4fcb-a546-e64976658bdd', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=12, memberId='consumer-my-third-application-1-d784761e-7670-4fcb-a546-e64976658bdd', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Updating assignment with
+	Assigned partitions:                       [demo_java-1]
+	Current owned partitions:                  []
+	Added partitions (assigned - owned):       [demo_java-1]
+	Revoked partitions (owned - assigned):     []
+
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-1])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: demo_java-1
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Setting offset for partition demo_java-1 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9094 (id: 3 rack: null)], epoch=3}}
+```
+
+Revisemos el consumidor 2
+```
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: group is already rebalancing
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=11, memberId='consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=11, memberId='consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Updating assignment with
+	Assigned partitions:                       [demo_java-2]
+	Current owned partitions:                  [demo_java-2]
+	Added partitions (assigned - owned):       []
+	Revoked partitions (owned - assigned):     []
+
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-2])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: 
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: group is already rebalancing
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=12, memberId='consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=12, memberId='consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Updating assignment with
+	Assigned partitions:                       [demo_java-2]
+	Current owned partitions:                  [demo_java-2]
+	Added partitions (assigned - owned):       []
+	Revoked partitions (owned - assigned):     []
+
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-2])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: 
+```
+Revisemos el consumidor 1:
+```
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-0, demo_java-1])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: 
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: group is already rebalancing
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=11, memberId='consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractStickyAssignor - Final assignment of partitions to consumers: 
+{consumer-my-third-application-1-d784761e-7670-4fcb-a546-e64976658bdd=[demo_java-1], consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b=[demo_java-2], consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed=[demo_java-0]}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Finished assignment for group at generation 11: {consumer-my-third-application-1-d784761e-7670-4fcb-a546-e64976658bdd=Assignment(partitions=[]), consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b=Assignment(partitions=[demo_java-2]), consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed=Assignment(partitions=[demo_java-0])}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=11, memberId='consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Updating assignment with
+	Assigned partitions:                       [demo_java-0]
+	Current owned partitions:                  [demo_java-0, demo_java-1]
+	Added partitions (assigned - owned):       []
+	Revoked partitions (owned - assigned):     [demo_java-1]
+
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Revoke previously assigned partitions demo_java-1
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Request joining group due to: need to revoke partitions [demo_java-1] as indicated by the current assignment and re-join
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Notifying assignor about the new Assignment(partitions=[demo_java-0])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Adding newly assigned partitions: 
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully joined group with generation Generation{generationId=12, memberId='consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.AbstractStickyAssignor - Final assignment of partitions to consumers: 
+{consumer-my-third-application-1-d784761e-7670-4fcb-a546-e64976658bdd=[demo_java-1], consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b=[demo_java-2], consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed=[demo_java-0]}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Finished assignment for group at generation 12: {consumer-my-third-application-1-d784761e-7670-4fcb-a546-e64976658bdd=Assignment(partitions=[demo_java-1]), consumer-my-third-application-1-26483eb0-21ce-407f-b274-5e9bc0a3b98b=Assignment(partitions=[demo_java-2]), consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed=Assignment(partitions=[demo_java-0])}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Successfully synced group in generation Generation{generationId=12, memberId='consumer-my-third-application-1-3495632d-6a5a-4daf-ba8e-1dcc2e0568ed', protocol='cooperative-sticky'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-my-third-application-1, groupId=my-third-application] Updating assignment with
+	Assigned partitions:                       [demo_java-0]
+	Current owned partitions:                  [demo_java-0]
+	Added partitions (assigned - owned):       []
+	Revoked partitions (owned - assigned):     []
+
+```
+
+
+
+
+
+
+
