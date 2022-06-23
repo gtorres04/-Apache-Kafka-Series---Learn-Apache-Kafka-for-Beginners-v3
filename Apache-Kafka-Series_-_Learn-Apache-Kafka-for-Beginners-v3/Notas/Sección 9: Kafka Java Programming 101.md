@@ -2972,7 +2972,15 @@ Revisemos el consumidor 1:
 	Revoked partitions (owned - assigned):     []
 
 ```
+# 53. Java Consumer Auto Offset Commit Behavior
 
+Una cosa que hemos estado dando por sentado son los offsets de los consumidores.
+* En La api del consumidor Java, los offsets son regularmente confirmados.
+* Habilita por defecto al menos una vez los escenarios de lectura.
+
+¿Cuando se confirman los offsets?
+
+* Los offsets se confirman cuando se llama `.poll()` y cuando han transcurrido los milisegundos configurados en `auto.commit.interval.ms`. Por ejemplo: `auto.commit.interval.ms=5000` y `enable.auto.commit=true` entonces se confirmara cada 5 segundos.
 
 
 
