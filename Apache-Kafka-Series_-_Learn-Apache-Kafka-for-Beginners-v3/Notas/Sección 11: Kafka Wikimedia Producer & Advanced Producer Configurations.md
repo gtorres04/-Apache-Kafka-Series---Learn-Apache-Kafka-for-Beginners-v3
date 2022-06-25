@@ -258,8 +258,30 @@ properties.setProperty(COMPRESSION_TYPE_CONFIG, "snappy");
 properties.setProperty(LINGER_MS_CONFIG, "20");
 properties.setProperty(BATCH_SIZE_CONFIG, Integer.toString(32*1024));
 ```
-68. Wikimedia Producer High Throughput Implementation
+# 68. Wikimedia Producer High Throughput Implementation
 
 Se implementa en el codigo
 
+# 69. Producer Default Partitioner & Sticky Partitioner
+
+El particionador es un proceso que se encarga de elegir a que particion debe el productor enviar un lote de mensajes.
+
+De la version 2.4 en adelante del cliente productor trae consigo el particionador `Sticky Partitioner` que es mucho mejor en rendimiento que el particionador que traia las versiones anteriores del cliente.
+
+Se evidencia el particionador que usará al momento de ejecutar el productor y se una priopiedad asi:
+```
+partitioner.class = class org.apache.kafka.clients.producer.internals.DefaultPartitioner
+```
+Que al ver el codigo fuente de esta clase veras que tiene una dependencia con `org.apache.kafka.clients.producer.internals.StickyPartitionCache`:
+```
+package org.apache.kafka.clients.producer.internals;
+...
+public class DefaultPartitioner implements Partitioner {
+	private final StickyPartitionCache stickyPartitionCache = new StickyPartitionCache();
+...
+}
+```
+
+# 70. [Advanced] max.block.ms and buffer.memory
+Rara vez suele suceder que el productor tenga un rendimiento mas alto que lo que logra rendir el servidor kafka. Cuando esto sucede se bloquea el envio de mensajes al servidor por un tiempo configuirado en el parametro `max.block.ms`, y existe un buffer de memoria en el productor que almacena los lotes de mensajes que no se logran enviar por que el servidor Kafka esta demorado en responder lotes de mensajes previos. El tamaño de este buffer de memoria lo configuramos con el parametro `buffer.memory`.
 
