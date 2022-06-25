@@ -212,6 +212,54 @@ Los valores preterminados de un productor kafka y como tener un productor seguro
   - `delivery.timeout.ms=120000`: al fallar un intento reintentará durante 2 minutos hasta publicar el mensaje.
   - `max.in.flight.requests.per.connection=5`: Asegura el maximo rendimiento mientras el mensaje mantiene el orden.
 
-  # 65. Wikimedia Producer Safe Producer Implementation
+# 65. Wikimedia Producer Safe Producer Implementation
 
   Se agregan las propiedades especificadas en el punto anterior en la implementacion del producto en Java.
+
+ # 66. Kafka Message Compression
+
+  La compresion de mensaje puede darse a nivel productor, broker o topico.
+
+## Message Compression at the Producer level (Compresion de mensaje en el productor)
+El parametro para configuirar el tipo comprension es `compression.type`, pudiendo tomar los siguientes valores: none (default), gzip, lz4, snappy, zstd (Kafka 2.1).
+La desventaja de tener compresion a nivel de productor, es que se obliga a los consumidores a la descompresion de los mensajes.
+## Message Compression
+* Considere probar `snappy` o `lz4` para una velocidad de compresion optima
+* Considere ajustar `linger.ms` y `batch.size` para obligar a nuestros productores a tener lotes mas grandes y por tanto, tener mas compresion y rendimientos mas altos. 
+## Message Compression at the Broker/Topic level
+La compresion puede darse tambien a nivel de broker o a nivel topico. Cuando se da a nivel de broker esta compresion se aplica a todos los topicos y cuando se da a nivel de topico solo se aplica a ese topico. 
+
+Existe un parametro de configuracion `compression.type` que segun su valor toma los siguiente comportamientos:
+* `compression.type=producer`: responzabiliza al productor de comprimir el lote de mensajes y el broker toma este lote de mensajes y lo escribe tal cual sin volver a comprimirlos.
+* `compression.type=none`: si el productor los comprime el broker los descomprime y despues escribe el lote de mensajes.
+* `compression.type=lz4` (Por ejemplo): se especifica el algoritmo de compresion que quisieramos que usar del lado del broker. Sin embargo tener en cuenta que si el algoritmo de compresion es diferente al usado del lado del producto, kafka tendra que descomprimir y comprimir en base al algoritmo especificado, por ejemplo el lz4. 
+
+RECOMENDACION: Dejar la configuracion por defecto `compression.type=producer` responzabilizando a los productores de hacer la compresion y asi no afectar el rendimiento del servidor de Kafka.
+
+# 67. `linger.ms` and `batch.size` Producer settings
+## ¿Como mejorar el mecanismo de procesamiento por lotes de Apache Kafka?
+
+Un productor de kafka intentara publicar continuamente como le sea posible. Para esto existe un parametro de configuracion que le dice el maximo de publicaciones o solicitudes (request) que puede hacer por coneccion con el cluster de kafka `max.in.flight.requests.per.connection`, su valor recomendando es `5` (`max.in.flight.requests.per.connection=5`), es decir puede enviar 5 publicaciones en paralelo por coneccion.
+
+Sin embargo puede darse el caso, en el que se cumple con el maximo de publicaciones al tiempo y sigue habiendo mensajes por publicar, es decir, hay publicaciones que deben hacerse mientras otras estan en vuelo. Kafka en estos casos es inteligente, ya que mientras existen publicaciones en vuelo, kafka va agrupando mensajes y arma lotes de mensajes para su proximo envio, entonces cada vez que todas sus conecciones esten ocupadas con el maximo de publicaciones en vuelo, kafka arma por lotes los mensajes.
+
+El procesamiento por lotes inteligente ayuda a aumentar el rendimiento mientras mantiene una latencia muy baja.
+
+Ademas del agrupamiento por lotes, existe un beneficio adicional al habilitar la COMPRESION de las publicaciones, haciendo mas compacto el lote a publicar. 
+
+Existen dos parametros de configuracion que influyen en el mecanismo de procesamiento por lotes:
+* `linger.ms` (0 por defecto): Es el tiempo de espera hasta que enviamos un lote a Kafka, este tiempo lo aprovecha el productor kafka para ir agregando mensajes al lote de mensajes que proximamente sera publicado.
+* `batch.size` (16KB por defecto): Especifica el tamaño de los lotes de mensajes que arma el productor para su publcacion. Con esta propiedad aumentariamos el tamaño del lote y poder enviar la mayor cantidad de mensajes posibles. 
+
+En conclusion asi debe lucir el codigo de un productor en Java:
+
+```
+properties.setProperty(COMPRESSION_TYPE_CONFIG, "snappy");
+properties.setProperty(LINGER_MS_CONFIG, "20");
+properties.setProperty(BATCH_SIZE_CONFIG, Integer.toString(32*1024));
+```
+68. Wikimedia Producer High Throughput Implementation
+
+Se implementa en el codigo
+
+
