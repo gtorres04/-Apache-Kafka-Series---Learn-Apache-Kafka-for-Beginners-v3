@@ -269,3 +269,323 @@ log.info("Offsets have been committed!");
 Enviamos de manera masiva a OpenSearch los mensajes recividos en un lote de mensajes.
 # 83. Consumer Offset Reset Behavior (Comportamiento de Restablecimiento de los offsets del consumidor)
 
+Es el comportamiento que tendra el consumidor al leer los mensajes de kafka
+
+- `auto.offset.reset=latest`: leera desde el final de la cola.
+- `auto.offset.reset=earliest`: leera desde el inicio de la cola.
+- `auto.offset.reset=none`: lanzara una exception si no se encuentran offset,
+
+Kafka retiene los mensajes recibidos de los productores en un tiempo determinado por la propiedad `offset.retension.minutes`.
+
+# 84. OpenSearch Consumer Implementation Part 6 - Replaying Data
+
+Ejecutemos un consumidor y verificamos que este consumidor no reciba mensajes.
+```
+> Task :kafka-consumer-opensearch:OpenSearchConsumer.main()
+[main] INFO org.apache.kafka.clients.consumer.ConsumerConfig - ConsumerConfig values: 
+	allow.auto.create.topics = true
+	auto.commit.interval.ms = 5000
+	auto.offset.reset = latest
+	bootstrap.servers = [127.0.0.1:9092]
+	check.crcs = true
+	client.dns.lookup = use_all_dns_ips
+	client.id = consumer-consumer-opensearch-demo-1
+	client.rack = 
+	connections.max.idle.ms = 540000
+	default.api.timeout.ms = 60000
+	enable.auto.commit = false
+	exclude.internal.topics = true
+	fetch.max.bytes = 52428800
+	fetch.max.wait.ms = 500
+	fetch.min.bytes = 1
+	group.id = consumer-opensearch-demo
+	group.instance.id = null
+	heartbeat.interval.ms = 3000
+	interceptor.classes = []
+	internal.leave.group.on.close = true
+	internal.throw.on.fetch.stable.offset.unsupported = false
+	isolation.level = read_uncommitted
+	key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+	max.partition.fetch.bytes = 1048576
+	max.poll.interval.ms = 300000
+	max.poll.records = 500
+	metadata.max.age.ms = 300000
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partition.assignment.strategy = [class org.apache.kafka.clients.consumer.RangeAssignor, class org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	session.timeout.ms = 45000
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	value.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version: 3.1.0
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId: 37edeed0777bacb3
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka startTimeMs: 1656769557772
+[main] INFO OpenSearchConsumer - The Wikimedia Index already exits
+[main] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Subscribed to topic(s): wikimedia.recentchange
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Resetting the last seen epoch of partition wikimedia.recentchange-0 to 0 since the associated topicId changed from null to DGWkrWKyQACUFXm_XTecqw
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Resetting the last seen epoch of partition wikimedia.recentchange-2 to 0 since the associated topicId changed from null to DGWkrWKyQACUFXm_XTecqw
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Resetting the last seen epoch of partition wikimedia.recentchange-1 to 0 since the associated topicId changed from null to DGWkrWKyQACUFXm_XTecqw
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Cluster ID: Uu9pnoNSRxashKBRdPCtfQ
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Discovered group coordinator 127.0.0.1:9092 (id: 2147483646 rack: null)
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Request joining group due to: need to re-join with the given member-id
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] (Re-)joining group
+[main] INFO OpenSearchConsumer - Received 0 record(s)
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Successfully joined group with generation Generation{generationId=3, memberId='consumer-consumer-opensearch-demo-1-4cdcf1c2-92c4-443a-9f83-81c741d56067', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Finished assignment for group at generation 3: {consumer-consumer-opensearch-demo-1-4cdcf1c2-92c4-443a-9f83-81c741d56067=Assignment(partitions=[wikimedia.recentchange-0, wikimedia.recentchange-1, wikimedia.recentchange-2])}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Successfully synced group in generation Generation{generationId=3, memberId='consumer-consumer-opensearch-demo-1-4cdcf1c2-92c4-443a-9f83-81c741d56067', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Notifying assignor about the new Assignment(partitions=[wikimedia.recentchange-0, wikimedia.recentchange-1, wikimedia.recentchange-2])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Adding newly assigned partitions: wikimedia.recentchange-2, wikimedia.recentchange-1, wikimedia.recentchange-0
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Setting offset for partition wikimedia.recentchange-2 to the committed offset FetchPosition{offset=235, offsetEpoch=Optional[0], currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 1 rack: null)], epoch=0}}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Setting offset for partition wikimedia.recentchange-1 to the committed offset FetchPosition{offset=252, offsetEpoch=Optional[0], currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 1 rack: null)], epoch=0}}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Setting offset for partition wikimedia.recentchange-0 to the committed offset FetchPosition{offset=257, offsetEpoch=Optional[0], currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 1 rack: null)], epoch=0}}
+[main] INFO OpenSearchConsumer - Received 0 record(s)
+[main] INFO OpenSearchConsumer - Received 0 record(s)
+[main] INFO OpenSearchConsumer - Received 0 record(s)
+[main] INFO OpenSearchConsumer - Received 0 record(s)
+[main] INFO OpenSearchConsumer - Received 0 record(s)
+```
+
+
+Para restablecer el offset de un grupo de consumidores asi:
+```
+gerlinorlandotorres@MacBook-Pro-de-Gerlin kafka-stack-docker-compose % kafka-consumer-groups --bootstrap-server localhost:9092 --group consumer-opensearch-demo --reset-offsets --to-earliest --execute --all-topics
+
+Error: Assignments can only be reset if the group 'consumer-opensearch-demo' is inactive, but the current state is Stable.
+
+GROUP                          TOPIC                          PARTITION  NEW-OFFSET     
+```
+El error anterior ocurre porque existe un consumidor conectado, y para restablecer es necesario que todos los consumidores del grupo esten desconectados. 
+
+Al tener todos los consumidores desconectados volvemos a ejecutar el comando:
+```
+gerlinorlandotorres@MacBook-Pro-de-Gerlin kafka-stack-docker-compose % kafka-consumer-groups --bootstrap-server localhost:9092 --group consumer-opensearch-demo --reset-offsets --to-earliest --execute --all-topics
+
+GROUP                          TOPIC                          PARTITION  NEW-OFFSET     
+consumer-opensearch-demo       wikimedia.recentchange         2          0              
+consumer-opensearch-demo       wikimedia.recentchange         1          0              
+consumer-opensearch-demo       wikimedia.recentchange         0          0
+```
+Despues de haber restablecido el offset del grupo de consumidores, ejecutamos un consumidor de este mismo grupo y evidenciaremos que ahora si recibira mensajes:
+```
+16:06:47: Executing ':kafka-consumer-opensearch:OpenSearchConsumer.main()'...
+
+> Task :kafka-consumer-opensearch:compileJava UP-TO-DATE
+> Task :kafka-consumer-opensearch:processResources NO-SOURCE
+> Task :kafka-consumer-opensearch:classes UP-TO-DATE
+
+> Task :kafka-consumer-opensearch:OpenSearchConsumer.main()
+[main] INFO org.apache.kafka.clients.consumer.ConsumerConfig - ConsumerConfig values: 
+	allow.auto.create.topics = true
+	auto.commit.interval.ms = 5000
+	auto.offset.reset = latest
+	bootstrap.servers = [127.0.0.1:9092]
+	check.crcs = true
+	client.dns.lookup = use_all_dns_ips
+	client.id = consumer-consumer-opensearch-demo-1
+	client.rack = 
+	connections.max.idle.ms = 540000
+	default.api.timeout.ms = 60000
+	enable.auto.commit = false
+	exclude.internal.topics = true
+	fetch.max.bytes = 52428800
+	fetch.max.wait.ms = 500
+	fetch.min.bytes = 1
+	group.id = consumer-opensearch-demo
+	group.instance.id = null
+	heartbeat.interval.ms = 3000
+	interceptor.classes = []
+	internal.leave.group.on.close = true
+	internal.throw.on.fetch.stable.offset.unsupported = false
+	isolation.level = read_uncommitted
+	key.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+	max.partition.fetch.bytes = 1048576
+	max.poll.interval.ms = 300000
+	max.poll.records = 500
+	metadata.max.age.ms = 300000
+	metric.reporters = []
+	metrics.num.samples = 2
+	metrics.recording.level = INFO
+	metrics.sample.window.ms = 30000
+	partition.assignment.strategy = [class org.apache.kafka.clients.consumer.RangeAssignor, class org.apache.kafka.clients.consumer.CooperativeStickyAssignor]
+	receive.buffer.bytes = 65536
+	reconnect.backoff.max.ms = 1000
+	reconnect.backoff.ms = 50
+	request.timeout.ms = 30000
+	retry.backoff.ms = 100
+	sasl.client.callback.handler.class = null
+	sasl.jaas.config = null
+	sasl.kerberos.kinit.cmd = /usr/bin/kinit
+	sasl.kerberos.min.time.before.relogin = 60000
+	sasl.kerberos.service.name = null
+	sasl.kerberos.ticket.renew.jitter = 0.05
+	sasl.kerberos.ticket.renew.window.factor = 0.8
+	sasl.login.callback.handler.class = null
+	sasl.login.class = null
+	sasl.login.connect.timeout.ms = null
+	sasl.login.read.timeout.ms = null
+	sasl.login.refresh.buffer.seconds = 300
+	sasl.login.refresh.min.period.seconds = 60
+	sasl.login.refresh.window.factor = 0.8
+	sasl.login.refresh.window.jitter = 0.05
+	sasl.login.retry.backoff.max.ms = 10000
+	sasl.login.retry.backoff.ms = 100
+	sasl.mechanism = GSSAPI
+	sasl.oauthbearer.clock.skew.seconds = 30
+	sasl.oauthbearer.expected.audience = null
+	sasl.oauthbearer.expected.issuer = null
+	sasl.oauthbearer.jwks.endpoint.refresh.ms = 3600000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.max.ms = 10000
+	sasl.oauthbearer.jwks.endpoint.retry.backoff.ms = 100
+	sasl.oauthbearer.jwks.endpoint.url = null
+	sasl.oauthbearer.scope.claim.name = scope
+	sasl.oauthbearer.sub.claim.name = sub
+	sasl.oauthbearer.token.endpoint.url = null
+	security.protocol = PLAINTEXT
+	security.providers = null
+	send.buffer.bytes = 131072
+	session.timeout.ms = 45000
+	socket.connection.setup.timeout.max.ms = 30000
+	socket.connection.setup.timeout.ms = 10000
+	ssl.cipher.suites = null
+	ssl.enabled.protocols = [TLSv1.2, TLSv1.3]
+	ssl.endpoint.identification.algorithm = https
+	ssl.engine.factory.class = null
+	ssl.key.password = null
+	ssl.keymanager.algorithm = SunX509
+	ssl.keystore.certificate.chain = null
+	ssl.keystore.key = null
+	ssl.keystore.location = null
+	ssl.keystore.password = null
+	ssl.keystore.type = JKS
+	ssl.protocol = TLSv1.3
+	ssl.provider = null
+	ssl.secure.random.implementation = null
+	ssl.trustmanager.algorithm = PKIX
+	ssl.truststore.certificates = null
+	ssl.truststore.location = null
+	ssl.truststore.password = null
+	ssl.truststore.type = JKS
+	value.deserializer = class org.apache.kafka.common.serialization.StringDeserializer
+
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka version: 3.1.0
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka commitId: 37edeed0777bacb3
+[main] INFO org.apache.kafka.common.utils.AppInfoParser - Kafka startTimeMs: 1656770807951
+[main] INFO OpenSearchConsumer - The Wikimedia Index already exits
+[main] INFO org.apache.kafka.clients.consumer.KafkaConsumer - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Subscribed to topic(s): wikimedia.recentchange
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Resetting the last seen epoch of partition wikimedia.recentchange-0 to 0 since the associated topicId changed from null to DGWkrWKyQACUFXm_XTecqw
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Resetting the last seen epoch of partition wikimedia.recentchange-2 to 0 since the associated topicId changed from null to DGWkrWKyQACUFXm_XTecqw
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Resetting the last seen epoch of partition wikimedia.recentchange-1 to 0 since the associated topicId changed from null to DGWkrWKyQACUFXm_XTecqw
+[main] INFO org.apache.kafka.clients.Metadata - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Cluster ID: Uu9pnoNSRxashKBRdPCtfQ
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Discovered group coordinator 127.0.0.1:9092 (id: 2147483646 rack: null)
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] (Re-)joining group
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Request joining group due to: need to re-join with the given member-id
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] (Re-)joining group
+[main] INFO OpenSearchConsumer - Received 0 record(s)
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Successfully joined group with generation Generation{generationId=5, memberId='consumer-consumer-opensearch-demo-1-7ef9b828-25e9-4507-b305-50d1430658ce', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Finished assignment for group at generation 5: {consumer-consumer-opensearch-demo-1-7ef9b828-25e9-4507-b305-50d1430658ce=Assignment(partitions=[wikimedia.recentchange-0, wikimedia.recentchange-1, wikimedia.recentchange-2])}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Successfully synced group in generation Generation{generationId=5, memberId='consumer-consumer-opensearch-demo-1-7ef9b828-25e9-4507-b305-50d1430658ce', protocol='range'}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Notifying assignor about the new Assignment(partitions=[wikimedia.recentchange-0, wikimedia.recentchange-1, wikimedia.recentchange-2])
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Adding newly assigned partitions: wikimedia.recentchange-2, wikimedia.recentchange-1, wikimedia.recentchange-0
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Setting offset for partition wikimedia.recentchange-2 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 1 rack: null)], epoch=0}}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Setting offset for partition wikimedia.recentchange-1 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 1 rack: null)], epoch=0}}
+[main] INFO org.apache.kafka.clients.consumer.internals.ConsumerCoordinator - [Consumer clientId=consumer-consumer-opensearch-demo-1, groupId=consumer-opensearch-demo] Setting offset for partition wikimedia.recentchange-0 to the committed offset FetchPosition{offset=0, offsetEpoch=Optional.empty, currentLeader=LeaderAndEpoch{leader=Optional[127.0.0.1:9092 (id: 1 rack: null)], epoch=0}}
+[main] INFO OpenSearchConsumer - Received 500 record(s)
+[main] INFO OpenSearchConsumer - Inserted 500 record(s).
+[main] INFO OpenSearchConsumer - Offsets have been committed!
+[main] INFO OpenSearchConsumer - Received 244 record(s)
+[main] INFO OpenSearchConsumer - Inserted 244 record(s).
+[main] INFO OpenSearchConsumer - Offsets have been committed!
+[main] INFO OpenSearchConsumer - Received 0 record(s)
+[main] INFO OpenSearchConsumer - Received 0 record(s)
+```
+# 85. Consumer Internal Threads (Avanzado)
+Los consumidores agrupados hablan con un coordinador de grupos de consumidores. El coordinador de grupos de consumidores es un broker en funciones y se usa para detectar si un consumidor esta activo.
+
+Para detectar si un consumidor esta activo, existe 2 mecanismo:
+- Heartbeat
+- poll
+
+## Consumer Heartbeat Thread (Hilo de los latidos del corazon del consumidor)
+Existe un supproceso (Thread) llamado (Heartbeat) que envia datos a Kafka, solo un latido de vez en cuando para decirle al coordinador de consumidores que sigue vivo. 
+
+Por defecto el intervalo del latido del corazon (heartbeat) lo determina una configuracion `heartbeat.interval.ms` (Por defecto 3 segundos), determinando la frecuencia con la que debe enviar latidos.
+
+Existe un parametro que maneja el timeout de la session entre el consumidor y el coordinador, `session.timeout.ms`, es recomendable dar el valor mas bajo posible, pensando principalmente en los rebalances que debe hacerse cada vez que un consumidor se desconecta.
+
+NOTA: es recomendable que el parametro `heartbeat.interval.ms` = `session.timeout.ms`/3
+
+## Consumer Poll Thread (Hilo de la encuesta)
+
+- `max.poll.interval.ms` (Por defecto 5 minutos): 
+  Tiempo maximo entre dos llamadas a la funcion `.poll()` antes de pensar que el consumidor esta muerto. Por ejemplo, un consumidor recibio un lote de mensajes y luego los procesa, si dicho procesamiento tarda mas tiempo del configurado en `max.poll.interval.ms` kafka pensara que el consumidor esta atascado.
+- `max.poll.records` (Por defecto 500): Es la cantidad maxima de registros que sondea a la vez, es decir, la cantidad de registros que puede recuperarse en un lote de mensajes.
+- `fetch.min.bytes` (Por defecto 1): Controla la cantidad minima de datos que quisieras al menos obtener de kafka en cada solicitud.
+- `fetch.max.wait.ms` (Por defecto 500): cantidad maxima de tiempo que el broker de kafka se bloqueara antes de responder la solicitud de recuperacion si no hay suficientes bytes de acuerdo a lo especificado en `fetch.min.bytes`. Por ejemplo: Un consumidor realiza una solicitud, kafka se da cuenta que no tiene suficientes bytes (<`fetch.min.bytes`) para dar una respuesta, entonces el broker se tomara tal tiempo (`fetch.max.wait.ms`) a esperas de tener los suficientes bytes para dar una respuesta al consumidor.
+- `max.partition.fetch.bytes` (Por defecto 1MB): Es la cantidad maxima de datos por particion que devolvera el servidor, es decir, si la lectura se hace de 100 particiones significa que necesitara al menos 100MB de RAM.
+- `fetch.max.bytes` (Por defecto 55MB): Cantidad maxima de datos devueltos para cada solicitud. Si tienes memoria disponible, aumentala para que permitir que su consumidor lea mas datos en cada solicitud.
+
+# 86. Consumer Replica Fetching - Rack Awareness
+Resaltar que desde la version 2.4 de Kafka, existe una funcionalidad que si existen particiones en diferentes centros de datos, los consumidores podran leer los mensajes de la particion que este en su mismo centro de datos, esto con la ventaja de que los costos entre los datos que viajan entre distintos centros de datos sean menos.
+
+
+
+
